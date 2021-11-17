@@ -1,0 +1,117 @@
+version: "3"
+networks:
+  backend:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+services:
+  nginx:
+    build: ./nginx
+    container_name: nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    links:
+      - "php-fpm"
+    depends_on:
+      - "php-fpm"
+    volumes:
+      - ${HOST_PROJECT_PATH}:${CONTAINER_PROJECT_PATH}
+      - ./nginx/site-enabled/:/etc/nginx/conf.d/
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/log/:/nginx/log
+    extra_hosts:
+      - "dockerhost:${DOCKER_HOST_IP}"
+    networks: 
+      backend:
+        ipv4_address: 172.20.0.2
+
+  php-fpm:
+    build:
+      context: ./php-fpm
+      args:
+        - PHP_VERSION=${PHP_VERSION}
+        - INSTALL_XDEBUG=${PHP_INSTALL_XDEBUG}
+        - INSTALL_REDIS=${PHP_INSTALL_REDIS}
+        - INSTALL_COMPOSER=${PHP_INSTALL_COMPOSER}
+    container_name: php-fpm
+    working_dir: ${CONTAINER_PROJECT_PATH}
+    user: ${USER_ID}:${USER_ID}
+    ports:
+      - "9000:9000"
+    extra_hosts:
+      - "dockerhost:${DOCKER_HOST_IP}"
+    links:
+      - "mysql"
+      - "redis"
+    depends_on:
+      - "mysql"
+      - "redis"
+    volumes:
+      - ./php-fpm/conf.d:/usr/local/etc/php.conf
+      - ./php-fpm/php.ini:/usr/local/etc/php/php.ini
+      - ./php-fpm/log/php-fpm.log:/var/log/php-fpm.log
+      - ${HOST_PROJECT_PATH}:${CONTAINER_PROJECT_PATH}
+      - ./fpm/log/xdebug.log:/var/log/xdebug.log
+      - ./cache/composer-cache:/home/docker/.composer
+      - ./common/.zshrc:/home/docker/.zshrc
+      - ./common/.vimrc:/home/docker/.vimrc
+    networks: 
+      backend:
+        ipv4_address: 172.20.0.3
+
+  mysql:
+    build:
+      context: ./mysql
+      args:
+        - MYSQL_VERSION=${MYSQL_VERSION}
+    container_name: mysql
+    user: ${USER_ID}:${USER_ID}
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - TZ=${TIMEZONE}
+    volumes:
+      - ${MYSQL_HOST_DATA_PATH}:${MYSQL_CONTAINER_DATA_PATH}
+      - ${MYSQL_ENTRYPOINT_INITDB}:/docker-entrypoint-initdb.d
+      - ./mysql/my.cnf:/etc/mysql/conf.d/my.cnf
+    ports:
+      - "${MYSQL_PORT}:3306"
+    networks:
+      backend:
+        ipv4_address: 172.20.0.4
+
+  redis:
+    build: ./redis
+    container_name: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./redis/log/redis.log:/var/log/redis/redis-server.log
+      - ${REDIS_HOST_DATA_PATH}:${REDIS_CONTAINER_DATA_PATH}
+    networks: 
+      backend:
+        ipv4_address: 172.20.0.5
+
+
+  node:
+    build:
+      context: ./node
+      args:
+        - NODE_VERSION=${NODE_VERSION}
+        - USER_ID=${USER_ID}
+    container_name: node
+    user: ${USER_ID}:${USER_ID}
+    extra_hosts:
+      - "dockerhost:${DOCKER_HOST_IP}"
+      - "www.qms.localhost:172.20.0.2"
+    volumes:
+      - ${HOST_PROJECT_PATH}:${CONTAINER_PROJECT_PATH}
+      - ./cache/npm-cache/:/home/node/.npm/
+    ports:
+      - "8090-8099:8090-8099"
+    tty: true
+    networks:
+      backend:
+        ipv4_address: 172.20.0.6
