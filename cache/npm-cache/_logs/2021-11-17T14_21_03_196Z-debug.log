@@ -1,0 +1,44 @@
+0 verbose cli [ '/usr/local/bin/node', '/usr/local/bin/npm', 'run', 'dev' ]
+1 info using npm@8.1.0
+2 info using node@v16.13.0
+3 timing npm:load:whichnode Completed in 0ms
+4 timing config:load:defaults Completed in 1ms
+5 timing config:load:file:/usr/local/lib/node_modules/npm/npmrc Completed in 1ms
+6 timing config:load:builtin Completed in 1ms
+7 timing config:load:cli Completed in 1ms
+8 timing config:load:env Completed in 1ms
+9 timing config:load:file:/develop/vue-admin-template/.npmrc Completed in 0ms
+10 timing config:load:project Completed in 1ms
+11 timing config:load:file:/home/node/.npmrc Completed in 0ms
+12 timing config:load:user Completed in 0ms
+13 timing config:load:file:/usr/local/etc/npmrc Completed in 0ms
+14 timing config:load:global Completed in 0ms
+15 timing config:load:validate Completed in 0ms
+16 timing config:load:credentials Completed in 1ms
+17 timing config:load:setEnvs Completed in 0ms
+18 timing config:load Completed in 7ms
+19 timing npm:load:configload Completed in 7ms
+20 timing npm:load:setTitle Completed in 0ms
+21 timing npm:load:setupLog Completed in 1ms
+22 timing config:load:flatten Completed in 1ms
+23 timing npm:load:cleanupLog Completed in 1ms
+24 timing npm:load:configScope Completed in 0ms
+25 timing npm:load:projectScope Completed in 3ms
+26 timing npm:load Completed in 15ms
+27 timing command:run-script Completed in 9706506ms
+28 verbose stack Error: command failed
+28 verbose stack     at ChildProcess.<anonymous> (/usr/local/lib/node_modules/npm/node_modules/@npmcli/promise-spawn/index.js:64:27)
+28 verbose stack     at ChildProcess.emit (node:events:390:28)
+28 verbose stack     at maybeClose (node:internal/child_process:1064:16)
+28 verbose stack     at Process.ChildProcess._handle.onexit (node:internal/child_process:301:5)
+29 verbose pkgid vue-admin-template@4.4.0
+30 verbose cwd /develop/vue-admin-template
+31 verbose Linux 4.19.104-microsoft-standard
+32 verbose argv "/usr/local/bin/node" "/usr/local/bin/npm" "run" "dev"
+33 verbose node v16.13.0
+34 verbose npm  v8.1.0
+35 error path /develop/vue-admin-template
+36 error command failed
+37 error signal SIGTERM
+38 error command sh -c vue-cli-service serve --watch
+39 verbose exit 1

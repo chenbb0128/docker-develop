@@ -54,7 +54,7 @@ services:
       - ./php-fpm/php.ini:/usr/local/etc/php/php.ini
       - ./php-fpm/log/php-fpm.log:/var/log/php-fpm.log
       - ${HOST_PROJECT_PATH}:${CONTAINER_PROJECT_PATH}
-      - ./fpm/log/xdebug.log:/var/log/xdebug.log
+      - ./php-fpm/log/xdebug.log:/var/log/xdebug.log
       - ./cache/composer-cache:/home/docker/.composer
       - ./common/.zshrc:/home/docker/.zshrc
       - ./common/.vimrc:/home/docker/.vimrc

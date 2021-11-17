@@ -1,5 +1,5 @@
 ARG NODE_VERSION
 FROM node:${NODE_VERSION}
-
-RUN npm install -g typescript
+WORKDIR /develop/vue-admin-template
+CMD [ "npm", "run", "dev" ]
 
