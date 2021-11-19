@@ -6,7 +6,8 @@ RUN mkdir /usr/local/etc/php/pool.d/ && mkdir /www/
 RUN apt-get update  && \
     apt-get install -y libpng-dev && \
     apt-get install -y gdb && \
-    apt-get install -y git
+    apt-get install -y git && \
+    apt-get install -y zsh
 
 RUN docker-php-ext-install pdo_mysql && \
     docker-php-ext-install mysqli && \
@@ -14,7 +15,8 @@ RUN docker-php-ext-install pdo_mysql && \
     docker-php-ext-install zip && \
     docker-php-ext-install pcntl && \
     docker-php-ext-install posix && \
-    docker-php-ext-install exif
+    docker-php-ext-install exif && \
+    docker-php-ext-install gettext
 
 #---------------------------------------------
 # COMPOSER
@@ -31,13 +33,23 @@ RUN if [ ${INSTALL_COMPOSER} = true ]; then \
 #---------------------------------------------
 
 ARG INSTALL_XDEBUG=false
-
 RUN if [ ${INSTALL_XDEBUG} = true ]; then \
-    if [ $(php -r "echo PHP_MAJOR_VERSION;") = "5" ]; then \
-        pecl install xdebug-2.5.5; \
+    # Install the xdebug extension
+    # https://xdebug.org/docs/compat
+    if [ $(php -r "echo PHP_MAJOR_VERSION;") = "8" ] || { [ $(php -r "echo PHP_MAJOR_VERSION;") = "7" ] && { [ $(php -r "echo PHP_MINOR_VERSION;") = "4" ] || [ $(php -r "echo PHP_MINOR_VERSION;") = "3" ] ;} ;}; then \
+        pecl install xdebug-3.1.1; \
     else \
-        pecl install xdebug; \
-    fi \
+        if [ $(php -r "echo PHP_MAJOR_VERSION;") = "5" ]; then \
+            pecl install xdebug-2.5.5; \
+        else \
+            if [ $(php -r "echo PHP_MINOR_VERSION;") = "0" ]; then \
+                pecl install xdebug-2.9.0; \
+            else \
+                pecl install xdebug-2.9.8; \
+            fi \
+        fi \
+    fi && \
+    ln -s /usr/local/etc/php.conf/xdebug.ini /usr/local/etc/php/conf.d/xdebug.ini \
 ;fi
 
 COPY ./conf.d/xdebug.ini /usr/local/etc/php/conf.d
@@ -51,5 +63,6 @@ ARG INSTALL_REDIS=false
 RUN if [ ${INSTALL_REDIS} = true ]; then \
     printf "\n" | pecl install -o -f redis && \
     rm -rf /tmp/pear && \
-    docker-php-ext-enable redis \
+    docker-php-ext-enable redis && \
+    ln -s /usr/local/etc/php.conf/redis.ini /usr/local/etc/php/conf.d/redis.ini \
 ;fi

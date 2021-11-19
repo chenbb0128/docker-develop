@@ -22,6 +22,7 @@ services:
       - ./nginx/site-enabled/:/etc/nginx/conf.d/
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf
       - ./nginx/log/:/nginx/log
+      - ./nginx/ssl:/etc/nginx/ssl
     extra_hosts:
       - "dockerhost:${DOCKER_HOST_IP}"
     networks: 
@@ -90,28 +91,31 @@ services:
     volumes:
       - ./redis/log/redis.log:/var/log/redis/redis-server.log
       - ${REDIS_HOST_DATA_PATH}:${REDIS_CONTAINER_DATA_PATH}
+      - ./redis/redis.conf:/usr/local/etc/redis/redis.conf
     networks: 
       backend:
         ipv4_address: 172.20.0.5
 
 
-  node:
-    build:
-      context: ./node
-      args:
-        - NODE_VERSION=${NODE_VERSION}
-        - USER_ID=${USER_ID}
-    container_name: node
-    user: ${USER_ID}:${USER_ID}
-    extra_hosts:
-      - "dockerhost:${DOCKER_HOST_IP}"
-      - "www.qms.localhost:172.20.0.2"
-    volumes:
-      - ${HOST_PROJECT_PATH}:${CONTAINER_PROJECT_PATH}
-      - ./cache/npm-cache/:/home/node/.npm/
-    ports:
-      - "8090-8099:8090-8099"
-    tty: true
-    networks:
-      backend:
-        ipv4_address: 172.20.0.6
+#  node:
+#    build:
+#      context: ./node
+#      args:
+#        - NODE_VERSION=${NODE_VERSION}
+#        - USER_ID=${USER_ID}
+#    container_name: node
+#    user: ${USER_ID}:${USER_ID}
+#    extra_hosts:
+#      - "dockerhost:${DOCKER_HOST_IP}"
+#      - "www.qms.localhost:172.20.0.2"
+#    volumes:
+#      - ${HOST_PROJECT_PATH}:${CONTAINER_PROJECT_PATH}
+#      - ./cache/npm-cache/:/home/node/.npm/
+#    ports:
+#      - "8090-8099:8090-8099"
+#    tty: true
+#    networks:
+#      backend:
+#        ipv4_address: 172.20.0.6
+
+
