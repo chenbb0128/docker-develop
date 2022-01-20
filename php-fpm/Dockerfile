@@ -7,7 +7,9 @@ RUN apt-get update  && \
     apt-get install -y libpng-dev && \
     apt-get install -y gdb && \
     apt-get install -y git && \
-    apt-get install -y zsh
+    apt-get install -y zsh && \
+    apt-get install -y unzip && \
+    apt-get install -y vim
 
 RUN docker-php-ext-install pdo_mysql && \
     docker-php-ext-install mysqli && \
@@ -63,6 +65,5 @@ ARG INSTALL_REDIS=false
 RUN if [ ${INSTALL_REDIS} = true ]; then \
     printf "\n" | pecl install -o -f redis && \
     rm -rf /tmp/pear && \
-    docker-php-ext-enable redis && \
     ln -s /usr/local/etc/php.conf/redis.ini /usr/local/etc/php/conf.d/redis.ini \
 ;fi
