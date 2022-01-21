@@ -1,0 +1,2 @@
+ARG JDK_VERSION=latest
+FROM openjdk:${JDK_VERSION}

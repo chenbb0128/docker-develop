@@ -115,4 +115,20 @@ services:
       backend:
         ipv4_address: 172.20.0.6
 
+  java:
+    build:
+      context: ./java
+      args:
+        - JDK_VERSION=${JDK_VERSION}
+    container_name: java
+    volumes:
+      - ./java/conf:/usr/local/openjdk-11/conf
+      - ${HOST_PROJECT_PATH}:${CONTAINER_PROJECT_PATH}
+    extra_hosts:
+      - "www.auth.localhost:172.20.0.3"
+      - "dockerhost:${DOCKER_HOST_IP}"
+    tty: true
+    networks:
+      backend:
+        ipv4_address: 172.20.0.7
 
