@@ -39,7 +39,6 @@ services:
         - INSTALL_COMPOSER=${PHP_INSTALL_COMPOSER}
     container_name: php-fpm
     working_dir: ${CONTAINER_PROJECT_PATH}
-    user: ${USER_ID}:${USER_ID}
     ports:
       - "9000:9000"
     extra_hosts:
@@ -59,6 +58,7 @@ services:
       - ./cache/composer-cache:/home/docker/.composer
       - ./common/.zshrc:/home/docker/.zshrc
       - ./common/.vimrc:/home/docker/.vimrc
+      - ./data/local:/var/local
     networks: 
       backend:
         ipv4_address: 172.20.0.3
@@ -69,7 +69,6 @@ services:
       args:
         - MYSQL_VERSION=${MYSQL_VERSION}
     container_name: mysql
-    user: ${USER_ID}:${USER_ID}
     environment:
       - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
       - TZ=${TIMEZONE}
@@ -77,6 +76,7 @@ services:
       - ${MYSQL_HOST_DATA_PATH}:${MYSQL_CONTAINER_DATA_PATH}
       - ${MYSQL_ENTRYPOINT_INITDB}:/docker-entrypoint-initdb.d
       - ./mysql/my.cnf:/etc/mysql/conf.d/my.cnf
+      - ./data/sql:/data
     ports:
       - "${MYSQL_PORT}:3306"
     networks:
@@ -96,26 +96,23 @@ services:
       backend:
         ipv4_address: 172.20.0.5
 
-
-#  node:
-#    build:
-#      context: ./node
-#      args:
-#        - NODE_VERSION=${NODE_VERSION}
-#        - USER_ID=${USER_ID}
-#    container_name: node
-#    user: ${USER_ID}:${USER_ID}
-#    extra_hosts:
-#      - "dockerhost:${DOCKER_HOST_IP}"
-#      - "www.qms.localhost:172.20.0.2"
-#    volumes:
-#      - ${HOST_PROJECT_PATH}:${CONTAINER_PROJECT_PATH}
-#      - ./cache/npm-cache/:/home/node/.npm/
-#    ports:
-#      - "8090-8099:8090-8099"
-#    tty: true
-#    networks:
-#      backend:
-#        ipv4_address: 172.20.0.6
+  node:
+    build:
+      context: ./node
+      args:
+        - NODE_VERSION=${NODE_VERSION}
+    container_name: node
+    extra_hosts:
+      - "dockerhost:${DOCKER_HOST_IP}"
+      - "www.qms.localhost:172.20.0.2"
+    volumes:
+      - ${HOST_PROJECT_PATH}:${CONTAINER_PROJECT_PATH}
+      - ./cache/npm-cache/:/home/node/.npm/
+    ports:
+      - "8090-8099:8090-8099"
+    tty: true
+    networks:
+      backend:
+        ipv4_address: 172.20.0.6
 
 
