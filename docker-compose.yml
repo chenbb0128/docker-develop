@@ -13,10 +13,13 @@ services:
     ports:
       - "80:80"
       - "443:443"
+      - "8787:8787"
     links:
       - "php-fpm"
+      - "php81-fpm"
     depends_on:
       - "php-fpm"
+      - "php81-fpm"
     volumes:
       - ${HOST_PROJECT_PATH}:${CONTAINER_PROJECT_PATH}
       - ./nginx/site-enabled/:/etc/nginx/conf.d/
@@ -95,3 +98,37 @@ services:
     networks: 
       backend:
         ipv4_address: 172.20.0.5
+
+  php81-fpm:
+    build:
+      context: ./php-fpm
+      args:
+        - PHP_VERSION=8.1
+        - INSTALL_XDEBUG=${PHP_INSTALL_XDEBUG}
+        - INSTALL_REDIS=${PHP_INSTALL_REDIS}
+        - INSTALL_COMPOSER=${PHP_INSTALL_COMPOSER}
+    container_name: php81-fpm
+    working_dir: ${CONTAINER_PROJECT_PATH}
+    ports:
+      - "9001:9000"
+    extra_hosts:
+      - "dockerhost:${DOCKER_HOST_IP}"
+    links:
+      - "mysql"
+      - "redis"
+    depends_on:
+      - "mysql"
+      - "redis"
+    volumes:
+      - ./php-fpm/conf.d:/usr/local/etc/php.conf
+      - ./php-fpm/php.ini:/usr/local/etc/php/php.ini
+      - ./php-fpm/log/php-fpm.log:/var/log/php-fpm.log
+      - ${HOST_PROJECT_PATH}:${CONTAINER_PROJECT_PATH}
+      - ./php-fpm/log/xdebug.log:/var/log/xdebug.log
+      - ./cache/composer-cache:/home/docker/.composer
+      - ./common/.zshrc:/home/docker/.zshrc
+      - ./common/.vimrc:/home/docker/.vimrc
+      - ./data/local:/var/local
+    networks:
+      backend:
+        ipv4_address: 172.20.0.6

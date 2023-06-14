@@ -4,6 +4,7 @@ FROM php:${PHP_VERSION}-fpm
 RUN mkdir /usr/local/etc/php/pool.d/ && mkdir /www/
 
 RUN apt-get update  && \
+    apt-get install -y libzip-dev && \
     apt-get install -y libpng-dev && \
     apt-get install -y gdb && \
     apt-get install -y git && \
