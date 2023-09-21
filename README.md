@@ -36,11 +36,12 @@ Docker本地开发环境，使用docker-compose管理
 ```bash
   docker-compose up -d nginx
 ```
-####修改nginx配置后重启
+#### 修改nginx配置后重启
 方式1：可直接重启nginx容器
 ```bash
   docker restart nginx
 ```
+
 方式2：进入nginx容器，重载配置
 ```bash
   docker exec -it nginx bash
