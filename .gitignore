@@ -1,4 +1,12 @@
-cache
+# macos auto generated
+.DS_Store
+
+# ide auto generated
 .idea
-mysql/data
-data
+
+# vscode auto generated
+.vscode
+
+/logs
+/data
+.env
