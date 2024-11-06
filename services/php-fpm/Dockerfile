@@ -2,12 +2,20 @@ ARG PHP_VERSION
 FROM php:${PHP_VERSION}-fpm
 
 ARG CHANGE_SOURCE=false
-RUN if [ ${CHANGE_SOURCE} = true ]; then \
-    # 更改源
+RUN if [ "${CHANGE_SOURCE}" == "true" ]; then \
+  # 检查 sources.list 是否存在且非空
+  if [ ! -f /etc/apt/sources.list ] || [ ! -s /etc/apt/sources.list ]; then \
+    echo "deb http://deb.debian.org/debian bullseye main" > /etc/apt/sources.list && \
+    echo "deb http://security.debian.org/debian-security bullseye-security main" >> /etc/apt/sources.list && \
+    echo "deb http://deb.debian.org/debian bullseye-updates main" >> /etc/apt/sources.list; \
+  fi; \
+  # 检查源是否已被更改，如果没有，则更改源
+  if ! grep -q "mirrors.tuna.tsinghua.edu.cn" /etc/apt/sources.list; then \
     sed -i 's/deb.debian.org/mirrors.tuna.tsinghua.edu.cn/' /etc/apt/sources.list && \
     sed -i 's/security.debian.org/mirrors.tuna.tsinghua.edu.cn/' /etc/apt/sources.list && \
-    sed -i 's/security-cdn.debian.org/mirrors.tuna.tsinghua.edu.cn/' /etc/apt/sources.list \
-;fi
+    sed -i 's/security-cdn.debian.org/mirrors.tuna.tsinghua.edu.cn/' /etc/apt/sources.list; \
+  fi; \
+fi
 
 # 必要的软件安装
 RUN set -xe; \
@@ -319,6 +327,12 @@ RUN if [ ${INSTALL_PHPDECIMAL} = true ]; then \
     php -m | grep -oiE '^decimal$'; \
   fi; \
 fi
+
+###########################################################################
+# bcmath:
+###########################################################################
+
+RUN docker-php-ext-install bcmath
 
 
 ###########################################################################
