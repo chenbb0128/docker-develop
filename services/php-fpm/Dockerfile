@@ -329,6 +329,17 @@ RUN if [ ${INSTALL_PHPDECIMAL} = true ]; then \
 fi
 
 ###########################################################################
+# Composer:
+###########################################################################
+
+ARG INSTALL_COMPOSER=false
+RUN if [ ${INSTALL_COMPOSER} = true ]; then \
+    curl -s http://getcomposer.org/installer | php && \
+    echo "export PATH=${PATH}:/var/www/vendor/bin" >> ~/.bashrc && \
+    mv composer.phar /usr/local/bin/composer \
+;fi
+
+###########################################################################
 # bcmath:
 ###########################################################################
 
