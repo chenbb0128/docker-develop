@@ -202,6 +202,12 @@ RUN if [ ${INSTALL_MYSQLI} = true ]; then \
     docker-php-ext-install mysqli \
 ;fi
 
+ARG INSTALL_PDO_MYSQL=false
+
+RUN if [ ${INSTALL_PDO_MYSQL} = true ]; then \
+    docker-php-ext-install pdo_mysql \
+;fi
+
 ###########################################################################
 # Image optimizers:
 ###########################################################################
