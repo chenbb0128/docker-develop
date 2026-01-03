@@ -1,0 +1,119 @@
+# 多 PHP 版本 Nginx 配置示例
+#
+# 本文件展示如何为不同项目配置不同的 PHP 版本
+# 复制并修改此文件以适应您的项目需求
+#
+# 可用的 PHP-FPM 容器:
+#   - php-fpm    (默认版本, 由 .env 中 PHP_VERSION 决定)
+#   - php73-fpm  (PHP 7.3)
+#   - php80-fpm  (PHP 8.0)
+#   - php81-fpm  (PHP 8.1)
+#   - php83-fpm  (PHP 8.3)
+#
+# 使用方法:
+#   1. 复制此文件并重命名，例如: myproject.conf
+#   2. 修改 server_name 和 root 路径
+#   3. 修改 fastcgi_pass 指向需要的 PHP 版本
+#   4. 重启 nginx 容器: docker-compose restart nginx
+
+#---------------------------------------------
+# 示例1: PHP 7.3 项目 (如旧版 Laravel 项目)
+#---------------------------------------------
+server {
+    listen 80;
+    listen [::]:80;
+
+    server_name php73-project.test;
+    root /develop/php73-project/public;
+    index index.php index.html index.htm;
+
+    location / {
+        try_files $uri $uri/ /index.php$is_args$args;
+    }
+
+    location ~ \.php$ {
+        try_files $uri /index.php =404;
+        fastcgi_pass php73-fpm:9000;  # <-- 使用 PHP 7.3
+        fastcgi_index index.php;
+        fastcgi_buffers 16 16k;
+        fastcgi_buffer_size 32k;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        fastcgi_read_timeout 600;
+        include fastcgi_params;
+    }
+
+    location ~ /\.ht {
+        deny all;
+    }
+
+    error_log /var/log/nginx/php73_project_error.log;
+    access_log /var/log/nginx/php73_project_access.log;
+}
+
+#---------------------------------------------
+# 示例2: PHP 8.1 项目 (如新版 Laravel/Symfony 项目)
+#---------------------------------------------
+server {
+    listen 80;
+    listen [::]:80;
+
+    server_name php81-project.test;
+    root /develop/php81-project/public;
+    index index.php index.html index.htm;
+
+    location / {
+        try_files $uri $uri/ /index.php$is_args$args;
+    }
+
+    location ~ \.php$ {
+        try_files $uri /index.php =404;
+        fastcgi_pass php81-fpm:9000;  # <-- 使用 PHP 8.1
+        fastcgi_index index.php;
+        fastcgi_buffers 16 16k;
+        fastcgi_buffer_size 32k;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        fastcgi_read_timeout 600;
+        include fastcgi_params;
+    }
+
+    location ~ /\.ht {
+        deny all;
+    }
+
+    error_log /var/log/nginx/php81_project_error.log;
+    access_log /var/log/nginx/php81_project_access.log;
+}
+
+#---------------------------------------------
+# 示例3: PHP 8.3 项目 (最新版本)
+#---------------------------------------------
+server {
+    listen 80;
+    listen [::]:80;
+
+    server_name php83-project.test;
+    root /develop/php83-project/public;
+    index index.php index.html index.htm;
+
+    location / {
+        try_files $uri $uri/ /index.php$is_args$args;
+    }
+
+    location ~ \.php$ {
+        try_files $uri /index.php =404;
+        fastcgi_pass php83-fpm:9000;  # <-- 使用 PHP 8.3
+        fastcgi_index index.php;
+        fastcgi_buffers 16 16k;
+        fastcgi_buffer_size 32k;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        fastcgi_read_timeout 600;
+        include fastcgi_params;
+    }
+
+    location ~ /\.ht {
+        deny all;
+    }
+
+    error_log /var/log/nginx/php83_project_error.log;
+    access_log /var/log/nginx/php83_project_access.log;
+}

@@ -1,4 +1,4 @@
-FROM redis:latest
+FROM redis:7.2-alpine
 
 RUN mkdir -p /usr/local/etc/redis
 COPY redis.conf /usr/local/etc/redis/redis.conf

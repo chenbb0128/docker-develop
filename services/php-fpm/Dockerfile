@@ -25,6 +25,7 @@ RUN set -xe; \
       apt-utils \
       gnupg2 \
       git \
+      libbrotli-dev \
       libzip-dev zip unzip && \
       if [ ${PHP_VERSION} = "7.3" ] || [ ${PHP_VERSION} = "7.4" ] || [ $(php -r "echo PHP_MAJOR_VERSION;") = "8" ]; then \
         docker-php-ext-configure zip; \
@@ -117,6 +118,8 @@ RUN set -eux; \
         pecl install swoole-4.5.11; \
       elif [ $(php -r "echo PHP_MAJOR_VERSION;") = "7" ]; then \
         pecl install swoole-4.8.12; \
+      elif [ $(php -r "echo PHP_VERSION_ID - PHP_RELEASE_VERSION;") = "80000" ]; then \
+        pecl install swoole-5.0.3; \
       else \
         pecl install swoole; \
       fi; \
@@ -200,6 +203,16 @@ ARG INSTALL_MYSQLI=false
 
 RUN if [ ${INSTALL_MYSQLI} = true ]; then \
     docker-php-ext-install mysqli \
+;fi
+
+###########################################################################
+# PDO_MYSQL:
+###########################################################################
+
+ARG INSTALL_PDO_MYSQL=false
+
+RUN if [ ${INSTALL_PDO_MYSQL} = true ]; then \
+    docker-php-ext-install pdo_mysql \
 ;fi
 
 ###########################################################################
@@ -344,6 +357,8 @@ RUN if [ ${INSTALL_COMPOSER} = true ]; then \
 ###########################################################################
 
 RUN docker-php-ext-install bcmath
+
+RUN docker-php-ext-install pcntl
 
 
 ###########################################################################
