@@ -40,7 +40,7 @@ class TerminalController extends AbstractController
             return $this->error('命令不能为空', 400);
         }
 
-        $fullCmd = "cd {$this->projectPath} && {$cmd} 2>&1";
+        $fullCmd = 'cd ' . escapeshellarg($this->projectPath) . " && unset PHP_VERSION && {$cmd} 2>&1";
 
         $output = [];
         $returnVar = 0;
@@ -71,6 +71,7 @@ class TerminalController extends AbstractController
             'php81' => 'nginx php81-fpm redis',
             'php83' => 'nginx php83-fpm redis',
             'minimal' => 'nginx php-fpm redis',
+            'go' => 'go redis',
         ];
 
         if (!isset($presets[$preset])) {
@@ -80,7 +81,7 @@ class TerminalController extends AbstractController
         $services = $presets[$preset];
         $cmd = "docker-compose up -d {$services} 2>&1";
 
-        $fullCmd = "cd {$this->projectPath} && {$cmd}";
+        $fullCmd = 'cd ' . escapeshellarg($this->projectPath) . " && unset PHP_VERSION && {$cmd}";
 
         // 使用 proc_open 获取实时输出
         $descriptors = [

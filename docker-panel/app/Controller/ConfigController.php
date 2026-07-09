@@ -19,6 +19,9 @@ class ConfigController extends AbstractController
     // 允许编辑的文件列表
     private array $allowedFiles = [
         'docker-compose.yml' => '服务编排配置',
+        'PROJECTS.md' => 'Project launcher guide',
+        'projects.json' => 'Project launcher config',
+        'projects.example.json' => 'Project launcher example',
         '.env' => '环境变量',
         '.env.example' => '环境变量示例',
         'Makefile' => 'Make 命令',
@@ -150,7 +153,7 @@ class ConfigController extends AbstractController
         // 执行 docker-compose config 验证
         $output = [];
         $returnVar = 0;
-        exec('cd ' . $this->projectPath . ' && docker-compose config 2>&1', $output, $returnVar);
+        exec('cd ' . escapeshellarg($this->projectPath) . ' && unset PHP_VERSION && docker-compose config 2>&1', $output, $returnVar);
 
         if ($returnVar === 0) {
             return $this->success(['output' => implode("\n", $output)], '配置验证通过');

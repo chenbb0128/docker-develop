@@ -38,6 +38,8 @@ Desktop.ini
 # ===================================
 .env
 !.env.example
+projects.json
+!projects.example.json
 
 # ===================================
 # 日志和数据目录

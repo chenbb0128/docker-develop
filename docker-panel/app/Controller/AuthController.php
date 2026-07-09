@@ -14,6 +14,7 @@ use Hyperf\HttpServer\Annotation\RequestMapping;
 #[Controller]
 class AuthController extends AbstractController
 {
+    private const AUTH_ENABLED = false;
     // 默认账号密码 (请在生产环境中修改)
     private const ADMIN_USERNAME = 'admin';
     private const ADMIN_PASSWORD = 'docker123';
@@ -45,6 +46,9 @@ class AuthController extends AbstractController
     #[RequestMapping(path: '/api/login', methods: 'POST')]
     public function login()
     {
+        if (!self::AUTH_ENABLED) {
+            return $this->success(['token' => 'local-dev'], 'Auth disabled');
+        }
         $username = $this->request->input('username', '');
         $password = $this->request->input('password', '');
 
@@ -90,6 +94,10 @@ class AuthController extends AbstractController
     #[RequestMapping(path: '/api/check-auth', methods: 'GET')]
     public function checkAuth()
     {
+        if (!self::AUTH_ENABLED) {
+            return $this->success(['authenticated' => true]);
+        }
+
         $token = $this->request->header('Authorization', '');
         $token = str_replace('Bearer ', '', $token);
 
@@ -112,6 +120,10 @@ class AuthController extends AbstractController
      */
     public static function validateToken(string $token): bool
     {
+        if (!self::AUTH_ENABLED) {
+            return true;
+        }
+
         if (empty($token))
             return false;
         $token = str_replace('Bearer ', '', $token);

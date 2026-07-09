@@ -7,6 +7,10 @@ networks:
 volumes:
   elasticsearch:
     driver: ${VOLUMES_DRIVER}
+  go-mod-cache:
+    driver: ${VOLUMES_DRIVER}
+  go-build-cache:
+    driver: ${VOLUMES_DRIVER}
 
 #---------------------------------------------
 # YAML Extension Fields (共享配置锚点)
@@ -58,7 +62,7 @@ services:
         - CHANGE_SOURCE=${CHANGE_SOURCE}
         - UBUNTU_VERSION=${UBUNTU_VERSION}
         - PHP_VERSION=${WORKSPACE_PHP_VERSION}
-        - INSTALL_XDEBUG=${WORKSPACE_INSTALL_XDEBUG}
+        - INSTALL_XDEBUG=false
         - XDEBUG_PORT=${WORKSPACE_XDEBUG_PORT}
         - INSTALL_MONGO=${WORKSPACE_INSTALL_MONGO}
         - INSTALL_PHPREDIS=${WORKSPACE_INSTALL_PHPREDIS}
@@ -84,6 +88,49 @@ services:
       - frontend
       - backend
 
+
+
+# BEGIN Hyperf project: hyperf-classmate
+
+  hyperf-classmate:
+    build:
+      context: ./services/workspace
+      args:
+        - CHANGE_SOURCE=${CHANGE_SOURCE}
+        - UBUNTU_VERSION=${UBUNTU_VERSION}
+        - PHP_VERSION=8.3
+        - INSTALL_XDEBUG=${WORKSPACE_INSTALL_XDEBUG}
+        - XDEBUG_PORT=${WORKSPACE_XDEBUG_PORT}
+        - INSTALL_MONGO=${WORKSPACE_INSTALL_MONGO}
+        - INSTALL_PHPREDIS=${WORKSPACE_INSTALL_PHPREDIS}
+        - INSTALL_SWOOLE=${WORKSPACE_INSTALL_SWOOLE}
+        - INSTALL_COMPOSER=${WORKSPACE_INSTALL_COMPOSER}
+        - COMPOSER_VERSION=${WORKSPACE_COMPOSER_VERSION}
+        - COMPOSER_REPO_PACKAGIST=${WORKSPACE_COMPOSER_REPO_PACKAGIST}
+        - INSTALL_NODE=${WORKSPACE_INSTALL_NODE}
+        - NODE_VERSION=${WORKSPACE_NODE_VERSION}
+        - INSTALL_SUPERVISOR=${WORKSPACE_INSTALL_SUPERVISOR}
+        - SHELL_OH_MY_ZSH=${SHELL_OH_MY_ZSH}
+        - PUID=${WORKSPACE_PUID}
+        - PGID=${WORKSPACE_PGID}
+        - TZ=${TIMEZONE}
+        - CONTAINER_PROJECT_PATH=${CONTAINER_PROJECT_PATH}
+    working_dir: '/develop/Hua/Projects/ClassMate/ClassMateServer'
+    command: sh -lc 'php bin/hyperf.php start'
+    volumes:
+      - ${HOST_PROJECT_PATH}:${CONTAINER_PROJECT_PATH}
+    extra_hosts:
+      - "dockerhost:${DOCKER_HOST_IP}"
+    ports:
+      - "9502:9501"
+    depends_on:
+      - redis
+    tty: true
+    networks:
+      - frontend
+      - backend
+# END Hyperf project: hyperf-classmate
+
 #---------------------------------------------
 # Docker 管理面板 (Hyperf + Swoole)
 #---------------------------------------------
@@ -98,9 +145,9 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./:/var/www/docker-develop
     working_dir: /var/www/docker-panel
-    command: php bin/hyperf.php start
+    command: sh -lc 'unset PHP_VERSION; exec php bin/hyperf.php start'
     ports:
-      - "9501:9501"
+      - "127.0.0.1:9501:9501"
     extra_hosts:
       - "dockerhost:${DOCKER_HOST_IP}"
     networks:
@@ -143,7 +190,7 @@ services:
         - INSTALL_COMPOSER=${INSTALL_COMPOSER}
     volumes:
       - ${HOST_PROJECT_PATH}:${CONTAINER_PROJECT_PATH}
-      - ./services/php-fpm/php${PHP_VERSION}.ini:/usr/local/etc/php/php.ini
+      - C:/Develop/Docker/docker-develop/services/php-fpm/php${PHP_VERSION}.ini:/usr/local/etc/php/php.ini
       - /var/run/docker.sock:/var/run/docker.sock
       - ./docker-panel:/var/www/docker-panel
 
@@ -179,7 +226,7 @@ services:
         - INSTALL_COMPOSER=${INSTALL_COMPOSER}
     volumes:
       - ${HOST_PROJECT_PATH}:${CONTAINER_PROJECT_PATH}
-      - ./services/php-fpm/php7.3.ini:/usr/local/etc/php/php.ini
+      - C:/Develop/Docker/docker-develop/services/php-fpm/php7.3.ini:/usr/local/etc/php/php.ini
 
 ### PHP 8.0 #########################################
   php80-fpm:
@@ -213,7 +260,7 @@ services:
         - INSTALL_COMPOSER=${INSTALL_COMPOSER}
     volumes:
       - ${HOST_PROJECT_PATH}:${CONTAINER_PROJECT_PATH}
-      - ./services/php-fpm/php8.0.ini:/usr/local/etc/php/php.ini
+      - C:/Develop/Docker/docker-develop/services/php-fpm/php8.0.ini:/usr/local/etc/php/php.ini
 
 ### PHP 8.1 #########################################
   php81-fpm:
@@ -247,7 +294,7 @@ services:
         - INSTALL_COMPOSER=${INSTALL_COMPOSER}
     volumes:
       - ${HOST_PROJECT_PATH}:${CONTAINER_PROJECT_PATH}
-      - ./services/php-fpm/php8.1.ini:/usr/local/etc/php/php.ini
+      - C:/Develop/Docker/docker-develop/services/php-fpm/php8.1.ini:/usr/local/etc/php/php.ini
 
 ### PHP 8.3 #########################################
   php83-fpm:
@@ -281,10 +328,47 @@ services:
         - INSTALL_COMPOSER=${INSTALL_COMPOSER}
     volumes:
       - ${HOST_PROJECT_PATH}:${CONTAINER_PROJECT_PATH}
-      - ./services/php-fpm/php8.3.ini:/usr/local/etc/php/php.ini
+      - C:/Develop/Docker/docker-develop/services/php-fpm/php8.3.ini:/usr/local/etc/php/php.ini
 
 #---------------------------------------------
-# Web 服务器
+# Go Development Environment
+#---------------------------------------------
+
+### Go Development ########################################
+  go:
+    build:
+      context: ./services/go
+      args:
+        - GO_VERSION=${GO_VERSION}
+        - GOPROXY=${GOPROXY}
+        - PUID=${GO_PUID}
+        - PGID=${GO_PGID}
+        - CONTAINER_PROJECT_PATH=${CONTAINER_PROJECT_PATH}
+        - INSTALL_DELVE=${GO_INSTALL_DELVE}
+    working_dir: ${CONTAINER_PROJECT_PATH}
+    command: tail -f /dev/null
+    volumes:
+      - ${HOST_PROJECT_PATH}:${CONTAINER_PROJECT_PATH}
+      - go-mod-cache:/go/pkg/mod
+      - go-build-cache:/home/developer/.cache/go-build
+    environment:
+      - GO111MODULE=on
+      - GOPROXY=${GOPROXY}
+      - CGO_ENABLED=${GO_CGO_ENABLED}
+      - TZ=${TIMEZONE}
+    ports:
+      - "${GO_HOST_PORT}:8080"
+      - "${GO_DEBUG_PORT}:2345"
+    extra_hosts:
+      - "dockerhost:${DOCKER_HOST_IP}"
+      - "host.docker.internal:host-gateway"
+    tty: true
+    networks:
+      - frontend
+      - backend
+
+#---------------------------------------------
+# Web Server
 #---------------------------------------------
 
 ### NGINX Server #########################################
@@ -297,7 +381,7 @@ services:
         - PHP_UPSTREAM_PORT=${NGINX_PHP_UPSTREAM_PORT}
     volumes:
       - ${NGINX_HOST_LOG_PATH}:/var/log/nginx
-      - ${NGINX_SITES_PATH}:/etc/nginx/sites-available
+      - ${NGINX_SITES_PATH}:/etc/nginx/sites
       - ${NGINX_SSL_PATH}:/etc/nginx/ssl
       - ${HOST_PROJECT_PATH}:${CONTAINER_PROJECT_PATH}
       - ./docker-panel:/var/www/docker-panel
@@ -306,7 +390,9 @@ services:
       - "${NGINX_HOST_HTTPS_PORT}:443"
       - "7001:7001"
       - "7002:7002"
+      - "8002:8002"
     depends_on:
+      - php-fpm
       - redis
     networks:
       - frontend

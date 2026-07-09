@@ -53,6 +53,12 @@ class EnvironmentController extends AbstractController
             'services' => ['nginx', 'php-fpm', 'redis'],
             'icon' => '⚡',
         ],
+        'go' => [
+            'name' => 'Go Dev',
+            'description' => 'Go toolchain + Redis',
+            'services' => ['go', 'redis'],
+            'icon' => 'Go',
+        ],
     ];
 
     /**
@@ -82,7 +88,7 @@ class EnvironmentController extends AbstractController
      */
     private function runDockerCompose(string $args): array
     {
-        $cmd = "cd {$this->projectPath} && docker-compose {$args} 2>&1";
+        $cmd = 'cd ' . escapeshellarg($this->projectPath) . " && unset PHP_VERSION && docker-compose {$args} 2>&1";
         $output = [];
         $returnVar = 0;
         exec($cmd, $output, $returnVar);

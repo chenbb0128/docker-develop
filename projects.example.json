@@ -1,0 +1,29 @@
+{
+  "projects": [
+    {
+      "key": "demo-hyperf",
+      "name": "Demo Hyperf API",
+      "type": "hyperf",
+      "path": "/develop/demo-hyperf",
+      "php": "php83-fpm",
+      "port": 9502,
+      "service": "hyperf-demo-hyperf",
+      "services": ["hyperf-demo-hyperf", "redis"],
+      "command": "php bin/hyperf.php start",
+      "log": "runtime/logs/hyperf.log",
+      "url": "http://localhost:9502",
+      "notes": "Hyperf uses one dedicated container per project. Host port 9502 maps to container port 9501 by default."
+    },
+    {
+      "key": "demo-laravel",
+      "name": "Demo Laravel App",
+      "type": "laravel",
+      "path": "/develop/demo-laravel",
+      "php": "php83-fpm",
+      "port": 8080,
+      "services": ["nginx", "php83-fpm", "redis"],
+      "url": "http://localhost:8080",
+      "notes": "Projects path is the project root. The Nginx site root should point to /develop/demo-laravel/public."
+    }
+  ]
+}

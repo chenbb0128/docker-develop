@@ -17,6 +17,9 @@ class IndexController extends AbstractController
     public function index()
     {
         $html = file_get_contents(BASE_PATH . '/public/index.html');
-        return $this->response->raw($html)->withHeader('Content-Type', 'text/html; charset=utf-8');
+        return $this->response->raw($html)
+            ->withHeader('Content-Type', 'text/html; charset=utf-8')
+            ->withHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+            ->withHeader('Pragma', 'no-cache');
     }
 }

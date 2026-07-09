@@ -48,11 +48,12 @@ class SiteController extends AbstractController
         foreach ($files as $file) {
             $filename = basename($file);
             $content = file_get_contents($file);
+            $activeContent = $this->stripCommentedLines($content);
 
-            preg_match('/server_name\s+([^;]+);/', $content, $serverNameMatch);
-            preg_match('/root\s+([^;]+);/', $content, $rootMatch);
-            preg_match('/fastcgi_pass\s+([^:]+):/', $content, $phpMatch);
-            preg_match('/listen\s+(\d+);/', $content, $portMatch);
+            preg_match('/server_name\s+([^;]+);/', $activeContent, $serverNameMatch);
+            preg_match('/root\s+([^;]+);/', $activeContent, $rootMatch);
+            preg_match('/fastcgi_pass\s+([^:]+):/', $activeContent, $phpMatch);
+            preg_match('/listen\s+(\d+);/', $activeContent, $portMatch);
 
             $port = isset($portMatch[1]) ? (int) $portMatch[1] : 80;
             $serverName = trim($serverNameMatch[1] ?? '');
@@ -63,7 +64,7 @@ class SiteController extends AbstractController
                 'root' => trim($rootMatch[1] ?? ''),
                 'phpVersion' => trim($phpMatch[1] ?? 'php-fpm'),
                 'port' => $port,
-                'enabled' => strpos($content, '#server') !== 0,
+                'enabled' => preg_match('/^\s*server\s*\{/m', $activeContent) === 1,
             ];
         }
 
@@ -75,6 +76,11 @@ class SiteController extends AbstractController
             'phpVersions' => $this->phpVersions,
             'exposedPorts' => $exposedPorts,
         ]);
+    }
+
+    private function stripCommentedLines(string $content): string
+    {
+        return preg_replace('/^\s*#.*(?:\r?\n)?/m', '', $content) ?? $content;
     }
 
     /**
@@ -260,7 +266,7 @@ class SiteController extends AbstractController
             return $this->error('未登录', 401);
         }
 
-        $cmd = "cd {$this->projectPath} && docker-compose up -d nginx 2>&1";
+        $cmd = 'cd ' . escapeshellarg($this->projectPath) . ' && unset PHP_VERSION && docker-compose up -d nginx 2>&1';
         exec($cmd, $output, $returnVar);
 
         if ($returnVar === 0) {
