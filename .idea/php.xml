@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="MessDetectorOptionsConfiguration">
+    <option name="transferred" value="true" />
+  </component>
+  <component name="PHPCSFixerOptionsConfiguration">
+    <option name="transferred" value="true" />
+  </component>
+  <component name="PHPCodeSnifferOptionsConfiguration">
+    <option name="highlightLevel" value="WARNING" />
+    <option name="transferred" value="true" />
+  </component>
+  <component name="PhpIncludePathManager">
+    <include_path>
+      <path value="$PROJECT_DIR$/docker-panel/vendor/composer" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/psr/container" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/psr/event-dispatcher" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/fig/http-message-util" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/psr/http-message" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/psr/http-server-handler" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/psr/http-client" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/psr/http-factory" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/swow/psr7-plus" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/nikic/fast-route" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/psr/http-server-middleware" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/psr/log" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/hyperf/codec" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/hyperf/collection" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/nikic/php-parser" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/hyperf/code-parser" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/hyperf/config" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/hyperf/context" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/hyperf/command" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/hyperf/conditionable" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/hyperf/coroutine" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/hyperf/devtool" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/hyperf/contract" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/hyperf/coordinator" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/hyperf/engine" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/hyperf/engine-contract" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/hyperf/di" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/hyperf/dispatcher" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/hyperf/framework" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/hyperf/http-message" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/hyperf/event" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/hyperf/exception-handler" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/hyperf/macroable" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/hyperf/memory" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/hyperf/http-server" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/hyperf/logger" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/hyperf/server" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/hyperf/session" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/hyperf/pipeline" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/hyperf/serializer" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/hyperf/support" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/hyperf/tappable" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/hyperf/stdlib" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/hyperf/stringable" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/hyperf/view-engine" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/php-di/phpdoc-reader" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/hyperf/testing" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/hyperf/view" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/laminas/laminas-mime" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/laminas/laminas-stdlib" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/swoole/ide-helper" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/vlucas/phpdotenv" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/phar-io/manifest" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/phar-io/version" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/monolog/monolog" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/myclabs/deep-copy" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/phpunit/php-file-iterator" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/phpunit/php-invoker" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/phpstan/phpstan" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/phpunit/php-code-coverage" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/phpunit/phpunit" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/symfony/console" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/phpunit/php-text-template" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/phpunit/php-timer" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/symfony/http-foundation" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/symfony/polyfill-ctype" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/symfony/deprecation-contracts" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/symfony/finder" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/symfony/polyfill-mbstring" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/symfony/polyfill-php80" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/symfony/polyfill-intl-grapheme" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/symfony/polyfill-intl-normalizer" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/symfony/string" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/theseer/tokenizer" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/symfony/polyfill-php83" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/symfony/service-contracts" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/phpoption/phpoption" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/ralouphie/getallheaders" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/doctrine/inflector" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/doctrine/instantiator" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/sebastian/code-unit-reverse-lookup" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/sebastian/comparator" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/sebastian/cli-parser" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/sebastian/code-unit" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/sebastian/environment" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/sebastian/exporter" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/sebastian/complexity" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/sebastian/diff" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/sebastian/object-enumerator" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/sebastian/object-reflector" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/sebastian/global-state" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/sebastian/lines-of-code" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/sebastian/version" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/guzzlehttp/guzzle" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/sebastian/recursion-context" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/sebastian/type" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/graham-campbell/result-type" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/guzzlehttp/promises" />
+      <path value="$PROJECT_DIR$/docker-panel/vendor/guzzlehttp/psr7" />
+    </include_path>
+  </component>
+  <component name="PhpProjectSharedConfiguration" php_language_level="8.1" />
+  <component name="PhpStanOptionsConfiguration">
+    <option name="transferred" value="true" />
+  </component>
+  <component name="PsalmOptionsConfiguration">
+    <option name="transferred" value="true" />
+  </component>
+</project>
