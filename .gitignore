@@ -1,0 +1,136 @@
+# ===================================
+# Docker Develop 项目 .gitignore
+# ===================================
+
+# ===================================
+# 操作系统文件
+# ===================================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Linux
+*~
+
+# ===================================
+# IDE 和编辑器
+# ===================================
+.idea/
+.vscode/
+*.swp
+*.swo
+*.sublime-workspace
+*.sublime-project
+.project
+.settings/
+.classpath
+*.iml
+
+# ===================================
+# 环境配置
+# ===================================
+.env
+!.env.example
+projects.json
+!projects.example.json
+
+# ===================================
+# 日志和数据目录
+# ===================================
+/logs/
+!/logs/.gitkeep
+/data/
+!/data/.gitkeep
+/cache/
+!/cache/.gitkeep
+
+# ===================================
+# Docker Panel (Hyperf 应用)
+# ===================================
+# Composer 依赖
+/docker-panel/vendor/
+
+# 运行时文件
+/docker-panel/runtime/
+!/docker-panel/runtime/.gitkeep
+
+# Hyperf 容器代理缓存
+/docker-panel/.phpstorm.meta.php
+/docker-panel/_ide_helper.php
+
+# 环境配置
+/docker-panel/.env
+!/docker-panel/.env.example
+
+# ===================================
+# Nginx 站点配置
+# ===================================
+# 保留示例文件，忽略实际配置
+/services/nginx/sites/*.conf
+!/services/nginx/sites/*.conf.example
+!/services/nginx/sites/default.conf
+
+# 备份文件
+/services/nginx/sites/*.bak.*
+
+# ===================================
+# SSL 证书
+# ===================================
+/services/nginx/ssl/*.crt
+/services/nginx/ssl/*.key
+/services/nginx/ssl/*.pem
+!/services/nginx/ssl/.gitkeep
+
+# ===================================
+# PHP 配置（个人配置）
+# ===================================
+# 如果有个人自定义的 php.ini
+# /services/php-fpm/*.custom.ini
+
+# ===================================
+# 临时文件和备份
+# ===================================
+*.tmp
+*.temp
+*.bak
+*.backup
+*.orig
+*.log
+
+# ===================================
+# Node.js (如果有前端项目)
+# ===================================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm
+.yarn
+
+# ===================================
+# 构建产物
+# ===================================
+/build/
+/dist/
+*.min.js
+*.min.css
+
+# ===================================
+# 测试覆盖率
+# ===================================
+/coverage/
+.phpunit.result.cache
+phpunit.xml
+
+# ===================================
+# 其他
+# ===================================
+# Token 存储文件 (敏感信息)
+/tmp/docker_panel_tokens.json

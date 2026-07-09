@@ -1,0 +1,512 @@
+networks:
+  frontend:
+    driver: ${NETWORKS_DRIVER}
+  backend:
+    driver: ${NETWORKS_DRIVER}
+
+volumes:
+  elasticsearch:
+    driver: ${VOLUMES_DRIVER}
+  go-mod-cache:
+    driver: ${VOLUMES_DRIVER}
+  go-build-cache:
+    driver: ${VOLUMES_DRIVER}
+
+#---------------------------------------------
+# YAML Extension Fields (共享配置锚点)
+#---------------------------------------------
+x-php-fpm-common: &php-fpm-common
+  build:
+    context: ./services/php-fpm
+    args: &php-fpm-build-args
+      - CHANGE_SOURCE=${CHANGE_SOURCE}
+      - INSTALL_XDEBUG=${PHP_FPM_INSTALL_XDEBUG}
+      - XDEBUG_PORT=${PHP_FPM_XDEBUG_PORT}
+      - INSTALL_MONGO=${PHP_FPM_INSTALL_MONGO}
+      - INSTALL_PHPREDIS=${PHP_FPM_INSTALL_PHPREDIS}
+      - INSTALL_MEMCACHED=${PHP_FPM_INSTALL_MEMCACHED}
+      - INSTALL_OPCACHE=${PHP_FPM_INSTALL_OPCACHE}
+      - INSTALL_EXIF=${PHP_FPM_INSTALL_EXIF}
+      - INSTALL_MYSQLI=${PHP_FPM_INSTALL_MYSQLI}
+      - INSTALL_PDO_MYSQL=${PHP_FPM_INSTALL_PDO_MYSQL}
+      - INSTALL_SWOOLE=${PHP_FPM_INSTALL_SWOOLE}
+      - INSTALL_IMAGE_OPTIMIZERS=${PHP_FPM_INSTALL_IMAGE_OPTIMIZERS}
+      - INSTALL_IMAGEMAGICK=${PHP_FPM_INSTALL_IMAGEMAGICK}
+      - INSTALL_FFMPEG=${PHP_FPM_FFMPEG}
+      - INSTALL_PHALCON=${PHP_FPM_INSTALL_PHALCON}
+      - PHALCON_VERSION=${PHALCON_VERSION}
+      - INSTALL_PING=${PHP_FPM_INSTALL_PING}
+      - INSTALL_PHPDECIMAL=${PHP_FPM_INSTALL_PHPDECIMAL}
+      - PUID=${PHP_FPM_PUID}
+      - PGID=${PHP_FPM_PGID}
+      - IMAGEMAGICK_VERSION=${PHP_FPM_IMAGEMAGICK_VERSION}
+      - CONTAINER_PROJECT_PATH=${CONTAINER_PROJECT_PATH}
+      - INSTALL_COMPOSER=${INSTALL_COMPOSER}
+  expose:
+    - "9000"
+  extra_hosts:
+    - "dockerhost:${DOCKER_HOST_IP}"
+  networks:
+    - backend
+
+services:
+#---------------------------------------------
+# Workspace 开发工具容器
+#---------------------------------------------
+
+### Workspace Utilities ##################################
+  workspace:
+    build:
+      context: ./services/workspace
+      args:
+        - CHANGE_SOURCE=${CHANGE_SOURCE}
+        - UBUNTU_VERSION=${UBUNTU_VERSION}
+        - PHP_VERSION=${WORKSPACE_PHP_VERSION}
+        - INSTALL_XDEBUG=false
+        - XDEBUG_PORT=${WORKSPACE_XDEBUG_PORT}
+        - INSTALL_MONGO=${WORKSPACE_INSTALL_MONGO}
+        - INSTALL_PHPREDIS=${WORKSPACE_INSTALL_PHPREDIS}
+        - INSTALL_SWOOLE=${WORKSPACE_INSTALL_SWOOLE}
+        - INSTALL_COMPOSER=${WORKSPACE_INSTALL_COMPOSER}
+        - COMPOSER_VERSION=${WORKSPACE_COMPOSER_VERSION}
+        - COMPOSER_REPO_PACKAGIST=${WORKSPACE_COMPOSER_REPO_PACKAGIST}
+        - INSTALL_NODE=${WORKSPACE_INSTALL_NODE}
+        - NODE_VERSION=${WORKSPACE_NODE_VERSION}
+        - INSTALL_SUPERVISOR=${WORKSPACE_INSTALL_SUPERVISOR}
+        - SHELL_OH_MY_ZSH=${SHELL_OH_MY_ZSH}
+        - PUID=${WORKSPACE_PUID}
+        - PGID=${WORKSPACE_PGID}
+        - TZ=${TIMEZONE}
+        - CONTAINER_PROJECT_PATH=${CONTAINER_PROJECT_PATH}
+    volumes:
+      - ${HOST_PROJECT_PATH}:${CONTAINER_PROJECT_PATH}
+      - ./services/workspace/supervisord.d:/etc/supervisor/conf.d
+    extra_hosts:
+      - "dockerhost:${DOCKER_HOST_IP}"
+    tty: true
+    networks:
+      - frontend
+      - backend
+
+
+
+# BEGIN Hyperf project: hyperf-classmate
+
+  hyperf-classmate:
+    build:
+      context: ./services/workspace
+      args:
+        - CHANGE_SOURCE=${CHANGE_SOURCE}
+        - UBUNTU_VERSION=${UBUNTU_VERSION}
+        - PHP_VERSION=8.3
+        - INSTALL_XDEBUG=${WORKSPACE_INSTALL_XDEBUG}
+        - XDEBUG_PORT=${WORKSPACE_XDEBUG_PORT}
+        - INSTALL_MONGO=${WORKSPACE_INSTALL_MONGO}
+        - INSTALL_PHPREDIS=${WORKSPACE_INSTALL_PHPREDIS}
+        - INSTALL_SWOOLE=${WORKSPACE_INSTALL_SWOOLE}
+        - INSTALL_COMPOSER=${WORKSPACE_INSTALL_COMPOSER}
+        - COMPOSER_VERSION=${WORKSPACE_COMPOSER_VERSION}
+        - COMPOSER_REPO_PACKAGIST=${WORKSPACE_COMPOSER_REPO_PACKAGIST}
+        - INSTALL_NODE=${WORKSPACE_INSTALL_NODE}
+        - NODE_VERSION=${WORKSPACE_NODE_VERSION}
+        - INSTALL_SUPERVISOR=${WORKSPACE_INSTALL_SUPERVISOR}
+        - SHELL_OH_MY_ZSH=${SHELL_OH_MY_ZSH}
+        - PUID=${WORKSPACE_PUID}
+        - PGID=${WORKSPACE_PGID}
+        - TZ=${TIMEZONE}
+        - CONTAINER_PROJECT_PATH=${CONTAINER_PROJECT_PATH}
+    working_dir: '/develop/Hua/Projects/ClassMate/ClassMateServer'
+    command: sh -lc 'php bin/hyperf.php start'
+    volumes:
+      - ${HOST_PROJECT_PATH}:${CONTAINER_PROJECT_PATH}
+    extra_hosts:
+      - "dockerhost:${DOCKER_HOST_IP}"
+    ports:
+      - "9502:9501"
+    depends_on:
+      - redis
+    tty: true
+    networks:
+      - frontend
+      - backend
+# END Hyperf project: hyperf-classmate
+
+#---------------------------------------------
+# Docker 管理面板 (Hyperf + Swoole)
+#---------------------------------------------
+
+### Docker Panel #########################################
+  docker-panel:
+    build:
+      context: ./docker-panel
+      dockerfile: Dockerfile
+    volumes:
+      - ./docker-panel:/var/www/docker-panel
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./:/var/www/docker-develop
+    working_dir: /var/www/docker-panel
+    command: sh -lc 'unset PHP_VERSION; exec php bin/hyperf.php start'
+    ports:
+      - "127.0.0.1:9501:9501"
+    extra_hosts:
+      - "dockerhost:${DOCKER_HOST_IP}"
+    networks:
+      - frontend
+      - backend
+
+#---------------------------------------------
+# PHP-FPM 多版本支持
+#---------------------------------------------
+
+### PHP 7.3 (默认版本) #############################
+  php-fpm:
+    <<: *php-fpm-common
+    build:
+      context: ./services/php-fpm
+      args:
+        - CHANGE_SOURCE=${CHANGE_SOURCE}
+        - PHP_VERSION=${PHP_VERSION}
+        - INSTALL_XDEBUG=${PHP_FPM_INSTALL_XDEBUG}
+        - XDEBUG_PORT=${PHP_FPM_XDEBUG_PORT}
+        - INSTALL_MONGO=${PHP_FPM_INSTALL_MONGO}
+        - INSTALL_PHPREDIS=${PHP_FPM_INSTALL_PHPREDIS}
+        - INSTALL_MEMCACHED=${PHP_FPM_INSTALL_MEMCACHED}
+        - INSTALL_OPCACHE=${PHP_FPM_INSTALL_OPCACHE}
+        - INSTALL_EXIF=${PHP_FPM_INSTALL_EXIF}
+        - INSTALL_MYSQLI=${PHP_FPM_INSTALL_MYSQLI}
+        - INSTALL_PDO_MYSQL=${PHP_FPM_INSTALL_PDO_MYSQL}
+        - INSTALL_SWOOLE=${PHP_FPM_INSTALL_SWOOLE}
+        - INSTALL_IMAGE_OPTIMIZERS=${PHP_FPM_INSTALL_IMAGE_OPTIMIZERS}
+        - INSTALL_IMAGEMAGICK=${PHP_FPM_INSTALL_IMAGEMAGICK}
+        - INSTALL_FFMPEG=${PHP_FPM_FFMPEG}
+        - INSTALL_PHALCON=${PHP_FPM_INSTALL_PHALCON}
+        - PHALCON_VERSION=${PHALCON_VERSION}
+        - INSTALL_PING=${PHP_FPM_INSTALL_PING}
+        - INSTALL_PHPDECIMAL=${PHP_FPM_INSTALL_PHPDECIMAL}
+        - PUID=${PHP_FPM_PUID}
+        - PGID=${PHP_FPM_PGID}
+        - IMAGEMAGICK_VERSION=${PHP_FPM_IMAGEMAGICK_VERSION}
+        - CONTAINER_PROJECT_PATH=${CONTAINER_PROJECT_PATH}
+        - INSTALL_COMPOSER=${INSTALL_COMPOSER}
+    volumes:
+      - ${HOST_PROJECT_PATH}:${CONTAINER_PROJECT_PATH}
+      - C:/Develop/Docker/docker-develop/services/php-fpm/php${PHP_VERSION}.ini:/usr/local/etc/php/php.ini
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./docker-panel:/var/www/docker-panel
+
+### PHP 7.3 #########################################
+  php73-fpm:
+    <<: *php-fpm-common
+    build:
+      context: ./services/php-fpm
+      args:
+        - CHANGE_SOURCE=${CHANGE_SOURCE}
+        - PHP_VERSION=7.3
+        - INSTALL_XDEBUG=${PHP_FPM_INSTALL_XDEBUG}
+        - XDEBUG_PORT=${PHP_FPM_XDEBUG_PORT}
+        - INSTALL_MONGO=${PHP_FPM_INSTALL_MONGO}
+        - INSTALL_PHPREDIS=${PHP_FPM_INSTALL_PHPREDIS}
+        - INSTALL_MEMCACHED=${PHP_FPM_INSTALL_MEMCACHED}
+        - INSTALL_OPCACHE=${PHP_FPM_INSTALL_OPCACHE}
+        - INSTALL_EXIF=${PHP_FPM_INSTALL_EXIF}
+        - INSTALL_MYSQLI=${PHP_FPM_INSTALL_MYSQLI}
+        - INSTALL_PDO_MYSQL=${PHP_FPM_INSTALL_PDO_MYSQL}
+        - INSTALL_SWOOLE=${PHP_FPM_INSTALL_SWOOLE}
+        - INSTALL_IMAGE_OPTIMIZERS=${PHP_FPM_INSTALL_IMAGE_OPTIMIZERS}
+        - INSTALL_IMAGEMAGICK=${PHP_FPM_INSTALL_IMAGEMAGICK}
+        - INSTALL_FFMPEG=${PHP_FPM_FFMPEG}
+        - INSTALL_PHALCON=${PHP_FPM_INSTALL_PHALCON}
+        - PHALCON_VERSION=${PHALCON_VERSION}
+        - INSTALL_PING=${PHP_FPM_INSTALL_PING}
+        - INSTALL_PHPDECIMAL=${PHP_FPM_INSTALL_PHPDECIMAL}
+        - PUID=${PHP_FPM_PUID}
+        - PGID=${PHP_FPM_PGID}
+        - IMAGEMAGICK_VERSION=${PHP_FPM_IMAGEMAGICK_VERSION}
+        - CONTAINER_PROJECT_PATH=${CONTAINER_PROJECT_PATH}
+        - INSTALL_COMPOSER=${INSTALL_COMPOSER}
+    volumes:
+      - ${HOST_PROJECT_PATH}:${CONTAINER_PROJECT_PATH}
+      - C:/Develop/Docker/docker-develop/services/php-fpm/php7.3.ini:/usr/local/etc/php/php.ini
+
+### PHP 8.0 #########################################
+  php80-fpm:
+    <<: *php-fpm-common
+    build:
+      context: ./services/php-fpm
+      args:
+        - CHANGE_SOURCE=${CHANGE_SOURCE}
+        - PHP_VERSION=8.0
+        - INSTALL_XDEBUG=${PHP_FPM_INSTALL_XDEBUG}
+        - XDEBUG_PORT=${PHP_FPM_XDEBUG_PORT}
+        - INSTALL_MONGO=${PHP_FPM_INSTALL_MONGO}
+        - INSTALL_PHPREDIS=${PHP_FPM_INSTALL_PHPREDIS}
+        - INSTALL_MEMCACHED=${PHP_FPM_INSTALL_MEMCACHED}
+        - INSTALL_OPCACHE=${PHP_FPM_INSTALL_OPCACHE}
+        - INSTALL_EXIF=${PHP_FPM_INSTALL_EXIF}
+        - INSTALL_MYSQLI=${PHP_FPM_INSTALL_MYSQLI}
+        - INSTALL_PDO_MYSQL=${PHP_FPM_INSTALL_PDO_MYSQL}
+        - INSTALL_SWOOLE=${PHP_FPM_INSTALL_SWOOLE}
+        - INSTALL_IMAGE_OPTIMIZERS=${PHP_FPM_INSTALL_IMAGE_OPTIMIZERS}
+        - INSTALL_IMAGEMAGICK=${PHP_FPM_INSTALL_IMAGEMAGICK}
+        - INSTALL_FFMPEG=${PHP_FPM_FFMPEG}
+        - INSTALL_PHALCON=${PHP_FPM_INSTALL_PHALCON}
+        - PHALCON_VERSION=${PHALCON_VERSION}
+        - INSTALL_PING=${PHP_FPM_INSTALL_PING}
+        - INSTALL_PHPDECIMAL=${PHP_FPM_INSTALL_PHPDECIMAL}
+        - PUID=${PHP_FPM_PUID}
+        - PGID=${PHP_FPM_PGID}
+        - IMAGEMAGICK_VERSION=${PHP_FPM_IMAGEMAGICK_VERSION}
+        - CONTAINER_PROJECT_PATH=${CONTAINER_PROJECT_PATH}
+        - INSTALL_COMPOSER=${INSTALL_COMPOSER}
+    volumes:
+      - ${HOST_PROJECT_PATH}:${CONTAINER_PROJECT_PATH}
+      - C:/Develop/Docker/docker-develop/services/php-fpm/php8.0.ini:/usr/local/etc/php/php.ini
+
+### PHP 8.1 #########################################
+  php81-fpm:
+    <<: *php-fpm-common
+    build:
+      context: ./services/php-fpm
+      args:
+        - CHANGE_SOURCE=${CHANGE_SOURCE}
+        - PHP_VERSION=8.1
+        - INSTALL_XDEBUG=${PHP_FPM_INSTALL_XDEBUG}
+        - XDEBUG_PORT=${PHP_FPM_XDEBUG_PORT}
+        - INSTALL_MONGO=${PHP_FPM_INSTALL_MONGO}
+        - INSTALL_PHPREDIS=${PHP_FPM_INSTALL_PHPREDIS}
+        - INSTALL_MEMCACHED=${PHP_FPM_INSTALL_MEMCACHED}
+        - INSTALL_OPCACHE=${PHP_FPM_INSTALL_OPCACHE}
+        - INSTALL_EXIF=${PHP_FPM_INSTALL_EXIF}
+        - INSTALL_MYSQLI=${PHP_FPM_INSTALL_MYSQLI}
+        - INSTALL_PDO_MYSQL=${PHP_FPM_INSTALL_PDO_MYSQL}
+        - INSTALL_SWOOLE=${PHP_FPM_INSTALL_SWOOLE}
+        - INSTALL_IMAGE_OPTIMIZERS=${PHP_FPM_INSTALL_IMAGE_OPTIMIZERS}
+        - INSTALL_IMAGEMAGICK=${PHP_FPM_INSTALL_IMAGEMAGICK}
+        - INSTALL_FFMPEG=${PHP_FPM_FFMPEG}
+        - INSTALL_PHALCON=${PHP_FPM_INSTALL_PHALCON}
+        - PHALCON_VERSION=${PHALCON_VERSION}
+        - INSTALL_PING=${PHP_FPM_INSTALL_PING}
+        - INSTALL_PHPDECIMAL=${PHP_FPM_INSTALL_PHPDECIMAL}
+        - PUID=${PHP_FPM_PUID}
+        - PGID=${PHP_FPM_PGID}
+        - IMAGEMAGICK_VERSION=${PHP_FPM_IMAGEMAGICK_VERSION}
+        - CONTAINER_PROJECT_PATH=${CONTAINER_PROJECT_PATH}
+        - INSTALL_COMPOSER=${INSTALL_COMPOSER}
+    volumes:
+      - ${HOST_PROJECT_PATH}:${CONTAINER_PROJECT_PATH}
+      - C:/Develop/Docker/docker-develop/services/php-fpm/php8.1.ini:/usr/local/etc/php/php.ini
+
+### PHP 8.3 #########################################
+  php83-fpm:
+    <<: *php-fpm-common
+    build:
+      context: ./services/php-fpm
+      args:
+        - CHANGE_SOURCE=${CHANGE_SOURCE}
+        - PHP_VERSION=8.3
+        - INSTALL_XDEBUG=${PHP_FPM_INSTALL_XDEBUG}
+        - XDEBUG_PORT=${PHP_FPM_XDEBUG_PORT}
+        - INSTALL_MONGO=${PHP_FPM_INSTALL_MONGO}
+        - INSTALL_PHPREDIS=${PHP_FPM_INSTALL_PHPREDIS}
+        - INSTALL_MEMCACHED=${PHP_FPM_INSTALL_MEMCACHED}
+        - INSTALL_OPCACHE=${PHP_FPM_INSTALL_OPCACHE}
+        - INSTALL_EXIF=${PHP_FPM_INSTALL_EXIF}
+        - INSTALL_MYSQLI=${PHP_FPM_INSTALL_MYSQLI}
+        - INSTALL_PDO_MYSQL=${PHP_FPM_INSTALL_PDO_MYSQL}
+        - INSTALL_SWOOLE=${PHP_FPM_INSTALL_SWOOLE}
+        - INSTALL_IMAGE_OPTIMIZERS=${PHP_FPM_INSTALL_IMAGE_OPTIMIZERS}
+        - INSTALL_IMAGEMAGICK=${PHP_FPM_INSTALL_IMAGEMAGICK}
+        - INSTALL_FFMPEG=${PHP_FPM_FFMPEG}
+        - INSTALL_PHALCON=${PHP_FPM_INSTALL_PHALCON}
+        - PHALCON_VERSION=${PHALCON_VERSION}
+        - INSTALL_PING=${PHP_FPM_INSTALL_PING}
+        - INSTALL_PHPDECIMAL=${PHP_FPM_INSTALL_PHPDECIMAL}
+        - PUID=${PHP_FPM_PUID}
+        - PGID=${PHP_FPM_PGID}
+        - IMAGEMAGICK_VERSION=${PHP_FPM_IMAGEMAGICK_VERSION}
+        - CONTAINER_PROJECT_PATH=${CONTAINER_PROJECT_PATH}
+        - INSTALL_COMPOSER=${INSTALL_COMPOSER}
+    volumes:
+      - ${HOST_PROJECT_PATH}:${CONTAINER_PROJECT_PATH}
+      - C:/Develop/Docker/docker-develop/services/php-fpm/php8.3.ini:/usr/local/etc/php/php.ini
+
+#---------------------------------------------
+# Go Development Environment
+#---------------------------------------------
+
+### Go Development ########################################
+  go:
+    build:
+      context: ./services/go
+      args:
+        - GO_VERSION=${GO_VERSION}
+        - GOPROXY=${GOPROXY}
+        - PUID=${GO_PUID}
+        - PGID=${GO_PGID}
+        - CONTAINER_PROJECT_PATH=${CONTAINER_PROJECT_PATH}
+        - INSTALL_DELVE=${GO_INSTALL_DELVE}
+    working_dir: ${CONTAINER_PROJECT_PATH}
+    command: tail -f /dev/null
+    volumes:
+      - ${HOST_PROJECT_PATH}:${CONTAINER_PROJECT_PATH}
+      - go-mod-cache:/go/pkg/mod
+      - go-build-cache:/home/developer/.cache/go-build
+    environment:
+      - GO111MODULE=on
+      - GOPROXY=${GOPROXY}
+      - CGO_ENABLED=${GO_CGO_ENABLED}
+      - TZ=${TIMEZONE}
+    ports:
+      - "${GO_HOST_PORT}:8080"
+      - "${GO_DEBUG_PORT}:2345"
+    extra_hosts:
+      - "dockerhost:${DOCKER_HOST_IP}"
+      - "host.docker.internal:host-gateway"
+    tty: true
+    networks:
+      - frontend
+      - backend
+
+#---------------------------------------------
+# Web Server
+#---------------------------------------------
+
+### NGINX Server #########################################
+  nginx:
+    build:
+      context: ./services/nginx
+      args:
+        - CHANGE_SOURCE=${CHANGE_SOURCE}
+        - PHP_UPSTREAM_CONTAINER=${NGINX_PHP_UPSTREAM_CONTAINER}
+        - PHP_UPSTREAM_PORT=${NGINX_PHP_UPSTREAM_PORT}
+    volumes:
+      - ${NGINX_HOST_LOG_PATH}:/var/log/nginx
+      - ${NGINX_SITES_PATH}:/etc/nginx/sites
+      - ${NGINX_SSL_PATH}:/etc/nginx/ssl
+      - ${HOST_PROJECT_PATH}:${CONTAINER_PROJECT_PATH}
+      - ./docker-panel:/var/www/docker-panel
+    ports:
+      - "${NGINX_HOST_HTTP_PORT}:80"
+      - "${NGINX_HOST_HTTPS_PORT}:443"
+      - "7001:7001"
+      - "7002:7002"
+      - "8002:8002"
+    depends_on:
+      - php-fpm
+      - redis
+    networks:
+      - frontend
+      - backend
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+#---------------------------------------------
+# 数据存储服务
+#---------------------------------------------
+
+### MySQL ################################################
+#  mysql:
+#    build:
+#      context: ./services/mysql
+#      args:
+#        - MYSQL_VERSION=${MYSQL_VERSION}
+#    environment:
+#      - MYSQL_DATABASE=${MYSQL_DATABASE}
+#      # - MYSQL_USER=${MYSQL_USER}
+#      # - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+#      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+#      - TZ=${TIMEZONE}
+#    volumes:
+#      - ${DATA_PATH}/mysql:/var/lib/mysql
+#      - ${MYSQL_ENTRYPOINT_INITDB}:/docker-entrypoint-initdb.d
+#    ports:
+#      - "${MYSQL_PORT}:3306"
+#    networks:
+#      - backend
+
+### MongoDB ##############################################
+#  mongo:
+#    build: ./services/mongo
+#    ports:
+#      - "${MONGODB_PORT}:27017"
+#    environment:
+#      - MONGO_INITDB_ROOT_USERNAME=${MONGO_USERNAME}
+#      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD}
+#    volumes:
+#      - ${DATA_PATH}/mongo:/data/db
+#      - ${DATA_PATH}/mongo_config:/data/configdb
+#    networks:
+#      - backend
+
+### Redis ################################################
+  redis:
+    build: ./services/redis
+    volumes:
+      - ${DATA_PATH}/redis:/data
+    command: --requirepass ${REDIS_PASSWORD}
+    ports:
+      - "${REDIS_PORT}:6379"
+    networks:
+      - backend
+
+#---------------------------------------------
+# 消息队列与搜索服务
+#---------------------------------------------
+
+### Memcached ############################################
+#  memcached:
+#    build: ./services/memcached
+#    volumes:
+#      - ${DATA_PATH}/memcached:/var/lib/memcached
+#    ports:
+#      - "${MEMCACHED_HOST_PORT}:11211"
+#    networks:
+#      - backend
+
+### RabbitMQ #############################################
+#  rabbitmq:
+#    build: ./services/rabbitmq
+#    ports:
+#      - "${RABBITMQ_NODE_HOST_PORT}:5672"
+#      - "${RABBITMQ_MANAGEMENT_HTTP_HOST_PORT}:15672"
+#      - "${RABBITMQ_MANAGEMENT_HTTPS_HOST_PORT}:15671"
+#      - "${RABBITMQ_WEB_STOMP_HOST_PORT}:15674"
+#    privileged: true
+#    hostname: rabbitmq
+#    volumes:
+#      - ${DATA_PATH}/rabbitmq:/var/lib/rabbitmq
+#      - ./services/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf
+#      - ./services/rabbitmq/management_agent.disable_metrics_collector.conf:/etc/rabbitmq/conf.d/management_agent.disable_metrics_collector.conf
+#    networks:
+#      - backend
+
+### ElasticSearch ########################################
+#  elasticsearch:
+#    build:
+#      context: ./services/elasticsearch
+#      args:
+#        - ELK_VERSION=${ELK_VERSION}
+#    volumes:
+#      - elasticsearch:/usr/share/elasticsearch/data
+#    environment:
+#      - cluster.name=docker-cluster
+#      - node.name=docker-node
+#      - bootstrap.memory_lock=true
+#      - xpack.security.enabled=false
+#      - xpack.security.transport.ssl.enabled=false
+#      - indices.id_field_data.enabled=true
+#      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+#      - cluster.initial_master_nodes=docker-node
+#    ulimits:
+#      memlock:
+#        soft: -1
+#        hard: -1
+#      nofile:
+#        soft: 65536
+#        hard: 65536
+#    ports:
+#      - "${ELASTICSEARCH_HOST_HTTP_PORT}:9200"
+#      - "${ELASTICSEARCH_HOST_TRANSPORT_PORT}:9300"
+#    networks:
+#      - frontend
+#      - backend

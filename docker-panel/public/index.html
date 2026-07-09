@@ -1,0 +1,3370 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Docker 管理面板 - Hyperf</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-600: #4b5563;
+            --gray-800: #1f2937;
+            --gray-900: #111827;
+            --radius: 12px;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, .1);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: var(--gray-800);
+        }
+
+        .login-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .login-box {
+            background: white;
+            padding: 40px;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .login-box h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 24px;
+        }
+
+        .login-box .logo {
+            text-align: center;
+            font-size: 48px;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid var(--gray-200);
+            border-radius: 8px;
+            font-size: 16px;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all .2s;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+            width: 100%;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        .btn-sm {
+            padding: 8px 16px;
+            font-size: 13px;
+        }
+
+        .error-message {
+            color: var(--danger);
+            text-align: center;
+            margin-top: 15px;
+            font-size: 14px;
+        }
+
+        .app-container {
+            display: none;
+            min-height: 100vh;
+        }
+
+        .app-container.active {
+            display: block;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, .95);
+            backdrop-filter: blur(10px);
+            padding: 16px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: var(--shadow);
+        }
+
+        .header h1 {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 20px;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .main-content {
+            padding: 24px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .stats-bar {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+        }
+
+        .stat-card .label {
+            color: var(--gray-600);
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+
+        .stat-card .value {
+            font-size: 32px;
+            font-weight: 700;
+        }
+
+        .stat-card.running .value {
+            color: var(--success);
+        }
+
+        .stat-card.stopped .value {
+            color: var(--danger);
+        }
+
+        .card {
+            background: white;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            overflow: hidden;
+        }
+
+        .card-header {
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--gray-200);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .container-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .container-table th,
+        .container-table td {
+            padding: 14px 20px;
+            text-align: left;
+            border-bottom: 1px solid var(--gray-100);
+        }
+
+        .container-table th {
+            background: var(--gray-50);
+            font-weight: 600;
+            font-size: 13px;
+            text-transform: uppercase;
+        }
+
+        .container-table tr:hover {
+            background: var(--gray-50);
+        }
+
+        .container-name {
+            font-weight: 600;
+        }
+
+        .container-id {
+            font-family: monospace;
+            font-size: 12px;
+            background: var(--gray-100);
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .status-badge.running {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .status-badge.exited,
+        .status-badge.stopped {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .status-badge::before {
+            content: '';
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .action-btn {
+            width: 32px;
+            height: 32px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+        }
+
+        .action-btn:hover {
+            transform: scale(1.1);
+        }
+
+        .action-btn.start {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .action-btn.stop {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .action-btn.restart {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .action-btn.logs {
+            background: #e0e7ff;
+            color: #3730a3;
+        }
+
+        .action-btn.delete {
+            background: #fecaca;
+            color: #dc2626;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, .5);
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 20px;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: var(--radius);
+            width: 100%;
+            max-width: 900px;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .modal-header {
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--gray-200);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+        }
+
+        .modal-body {
+            padding: 24px;
+            overflow: auto;
+            flex: 1;
+        }
+
+        .logs-container {
+            background: var(--gray-900);
+            color: #10b981;
+            font-family: monospace;
+            font-size: 13px;
+            padding: 16px;
+            border-radius: 8px;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow: auto;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: var(--gray-600);
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 4px solid var(--gray-200);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .refresh-btn {
+            background: var(--gray-100);
+            color: var(--gray-800);
+        }
+
+        .tech-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .project-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 12px;
+            padding: 16px;
+        }
+
+        .project-card {
+            background: var(--gray-50);
+            border: 1px solid var(--gray-200);
+            border-radius: 8px;
+            padding: 14px;
+        }
+
+        .project-card.active {
+            border-color: var(--success);
+            background: #ecfdf5;
+        }
+
+        .project-title {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            align-items: flex-start;
+            margin-bottom: 8px;
+        }
+
+        .project-title strong {
+            font-size: 15px;
+        }
+
+        .project-meta {
+            color: var(--gray-600);
+            font-size: 12px;
+            line-height: 1.6;
+            word-break: break-all;
+        }
+
+        .project-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .project-form {
+            display: none;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 10px;
+            padding: 16px;
+            border-top: 1px solid var(--gray-200);
+            background: white;
+        }
+
+        .project-form.active {
+            display: grid;
+        }
+
+        .project-form input,
+        .project-form select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid var(--gray-200);
+            border-radius: 6px;
+        }
+        .project-field {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            color: var(--gray-700);
+            font-size: 12px;
+        }
+
+        .project-field-wide {
+            grid-column: 1 / -1;
+        }
+
+        .project-field label:first-child {
+            font-weight: 600;
+        }
+
+        .checkbox-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .checkbox-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: var(--gray-50);
+            border: 1px solid var(--gray-200);
+            border-radius: 999px;
+            padding: 6px 10px;
+            color: var(--gray-700);
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .checkbox-chip input {
+            width: auto;
+            padding: 0;
+            margin: 0;
+        }
+
+        .project-help {
+            color: var(--gray-500);
+            font-size: 11px;
+            line-height: 1.5;
+        }
+
+        .config-center-modal { max-width: 1480px !important; width: min(1480px, calc(100vw - 36px)); max-height: 92vh !important; overflow: hidden; }
+        .config-center-header { background: linear-gradient(135deg, #f8fafc 0%, #eef2ff 48%, #ecfeff 100%); }
+        .config-center-title { display: flex; flex-direction: column; gap: 4px; }
+        .config-center-title small { color: var(--gray-600); font-weight: 400; }
+        .config-center-body { padding: 0; overflow: hidden; }
+        .config-center-layout { display: grid; grid-template-columns: 320px minmax(420px, 1fr) 310px; height: min(76vh, 820px); min-height: 560px; }
+        .config-sidebar, .config-inspector { background: #f8fafc; overflow: auto; }
+        .config-sidebar { border-right: 1px solid var(--gray-200); padding: 16px; }
+        .config-inspector { border-left: 1px solid var(--gray-200); padding: 16px; }
+        .config-search-row { display: flex; gap: 8px; margin-bottom: 12px; }
+        .config-search-row input { flex: 1; border: 1px solid var(--gray-200); border-radius: 10px; padding: 10px 12px; outline: none; }
+        .config-search-row input:focus, .config-editor:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37, 99, 235, .12); }
+        .config-group { margin-bottom: 14px; }
+        .config-group-title { display: flex; align-items: center; justify-content: space-between; color: var(--gray-500); font-size: 12px; font-weight: 700; letter-spacing: .03em; margin: 12px 2px 8px; }
+        .config-file-item { border: 1px solid transparent; background: white; border-radius: 12px; padding: 10px; margin-bottom: 8px; cursor: pointer; transition: all .18s ease; }
+        .config-file-item:hover { transform: translateY(-1px); border-color: #bfdbfe; box-shadow: 0 8px 20px rgba(15, 23, 42, .08); }
+        .config-file-item.active { border-color: var(--primary); background: #eff6ff; box-shadow: inset 4px 0 0 var(--primary); }
+        .config-file-main { display: flex; justify-content: space-between; gap: 8px; align-items: flex-start; }
+        .config-file-name { font-weight: 700; font-size: 13px; color: var(--gray-800); word-break: break-word; }
+        .config-file-path, .config-file-desc, .config-muted { color: var(--gray-500); font-size: 11px; line-height: 1.5; word-break: break-all; }
+        .config-pill { display: inline-flex; align-items: center; gap: 4px; border-radius: 999px; padding: 4px 8px; font-size: 11px; font-weight: 700; white-space: nowrap; }
+        .risk-high { background: #fee2e2; color: #991b1b; }
+        .risk-medium { background: #fef3c7; color: #92400e; }
+        .risk-low { background: #dcfce7; color: #166534; }
+        .config-pill.neutral { background: var(--gray-100); color: var(--gray-700); }
+        .config-editor-panel { display: flex; flex-direction: column; min-width: 0; background: white; }
+        .config-editor-toolbar { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; padding: 16px; border-bottom: 1px solid var(--gray-200); }
+        .config-current-name { font-weight: 800; color: var(--gray-900); font-size: 16px; }
+        .config-current-path { color: var(--gray-500); font-size: 12px; margin-top: 4px; word-break: break-all; }
+        .config-toolbar-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+        .config-editor-wrap { position: relative; flex: 1; min-height: 0; padding: 16px; display: flex; }
+        .config-editor { flex: 1; width: 100%; min-height: 100%; resize: none; border: 1px solid var(--gray-200); border-radius: 14px; padding: 14px; font-family: Consolas, 'Cascadia Code', monospace; font-size: 13px; line-height: 1.55; color: #111827; background: linear-gradient(180deg, #fff 0%, #fbfdff 100%); outline: none; tab-size: 2; }
+        .config-editor.dirty { border-color: #f59e0b; box-shadow: 0 0 0 3px rgba(245, 158, 11, .12); }
+        .config-empty-state { position: absolute; inset: 16px; display: grid; place-items: center; border: 1px dashed var(--gray-300); border-radius: 14px; background: #f8fafc; color: var(--gray-600); text-align: center; padding: 24px; pointer-events: none; }
+        .config-editor-footer { display: flex; justify-content: space-between; gap: 12px; padding: 12px 16px; border-top: 1px solid var(--gray-200); color: var(--gray-600); font-size: 12px; }
+        .config-status.success { color: var(--success); }
+        .config-status.error { color: var(--danger); }
+        .config-status.warn { color: #b45309; }
+        .config-info-card { background: white; border: 1px solid var(--gray-200); border-radius: 14px; padding: 12px; margin-bottom: 12px; }
+        .config-info-card h4 { margin-bottom: 8px; color: var(--gray-800); }
+        .config-kv { display: grid; grid-template-columns: 78px 1fr; gap: 7px 10px; font-size: 12px; line-height: 1.5; }
+        .config-kv span:nth-child(odd) { color: var(--gray-500); }
+        .config-backup-item { border: 1px solid var(--gray-200); border-radius: 10px; padding: 9px; margin-bottom: 8px; background: #fff; }
+        .config-backup-actions { display: flex; gap: 6px; margin-top: 8px; }
+        .config-output { max-height: 180px; overflow: auto; white-space: pre-wrap; background: #0f172a; color: #bfdbfe; border-radius: 10px; padding: 10px; font-family: Consolas, monospace; font-size: 12px; }
+        @media (max-width: 1180px) { .config-center-layout { grid-template-columns: 280px minmax(360px, 1fr); } .config-inspector { display: none; } }
+        @media (max-width: 820px) { .config-center-layout { grid-template-columns: 1fr; height: 82vh; } .config-sidebar { max-height: 220px; border-right: 0; border-bottom: 1px solid var(--gray-200); } }
+
+        .site-center-modal { max-width: 1320px !important; width: min(1320px, calc(100vw - 36px)); max-height: 92vh !important; overflow: hidden; }
+        .site-center-header { background: linear-gradient(135deg, #f0fdfa 0%, #ecfeff 48%, #f8fafc 100%); }
+        .site-center-title { display: flex; flex-direction: column; gap: 4px; }
+        .site-center-title small { color: var(--gray-600); font-weight: 400; }
+        .site-center-body { padding: 0; overflow: hidden; }
+        .site-center-layout { display: grid; grid-template-columns: minmax(380px, 440px) minmax(480px, 1fr); height: min(76vh, 820px); min-height: 560px; }
+        .site-builder { background: #f8fafc; border-right: 1px solid var(--gray-200); padding: 18px; overflow: auto; }
+        .site-list-panel { background: white; padding: 18px; overflow: auto; }
+        .site-section-title { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+        .site-section-title h4 { color: var(--gray-900); margin-bottom: 4px; }
+        .site-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .site-field { display: flex; flex-direction: column; gap: 6px; }
+        .site-field-wide { grid-column: 1 / -1; }
+        .site-field label { color: var(--gray-700); font-size: 12px; font-weight: 700; }
+        .site-field input, .site-field select { width: 100%; border: 1px solid var(--gray-200); border-radius: 10px; padding: 10px 12px; outline: none; background: white; }
+        .site-field input:focus, .site-field select:focus, .site-search input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37, 99, 235, .12); }
+        .site-help { color: var(--gray-500); font-size: 11px; line-height: 1.5; }
+        .site-preview-card { margin-top: 14px; border: 1px solid #bae6fd; background: linear-gradient(135deg, #ecfeff 0%, #f0f9ff 100%); border-radius: 16px; padding: 14px; }
+        .site-preview-url { font-weight: 800; color: #0f766e; word-break: break-all; }
+        .site-preview-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+        .site-stat-grid { display: grid; grid-template-columns: repeat(3, minmax(120px, 1fr)); gap: 10px; margin-bottom: 14px; }
+        .site-stat { border: 1px solid var(--gray-200); border-radius: 14px; padding: 12px; background: #f8fafc; }
+        .site-stat strong { display: block; color: var(--gray-900); font-size: 20px; }
+        .site-stat span { color: var(--gray-500); font-size: 12px; }
+        .site-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+        .site-search { flex: 1; min-width: 220px; }
+        .site-search input { width: 100%; border: 1px solid var(--gray-200); border-radius: 10px; padding: 10px 12px; outline: none; }
+        .site-card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
+        .site-card { border: 1px solid var(--gray-200); border-radius: 16px; padding: 14px; background: white; box-shadow: 0 8px 20px rgba(15, 23, 42, .05); }
+        .site-card.port { border-color: #bfdbfe; background: linear-gradient(180deg, #fff 0%, #eff6ff 100%); }
+        .site-card.domain { border-color: #bbf7d0; background: linear-gradient(180deg, #fff 0%, #f0fdf4 100%); }
+        .site-card-head { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; margin-bottom: 10px; }
+        .site-card-title { font-weight: 800; color: var(--gray-900); word-break: break-all; }
+        .site-card-url { color: var(--primary); font-weight: 700; word-break: break-all; }
+        .site-meta { color: var(--gray-600); font-size: 12px; line-height: 1.6; word-break: break-all; }
+        .site-card-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+        .site-badge { display: inline-flex; align-items: center; border-radius: 999px; padding: 4px 8px; font-size: 11px; font-weight: 700; white-space: nowrap; }
+        .site-badge.ok { background: #dcfce7; color: #166534; }
+        .site-badge.warn { background: #fef3c7; color: #92400e; }
+        .site-badge.info { background: #dbeafe; color: #1d4ed8; }
+        .site-badge.gray { background: var(--gray-100); color: var(--gray-700); }
+        .site-empty { border: 1px dashed var(--gray-300); border-radius: 16px; padding: 24px; text-align: center; color: var(--gray-500); background: #f8fafc; }
+
+        .health-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; padding: 16px; }
+        .health-item { border: 1px solid var(--gray-200); border-radius: 14px; padding: 12px; background: #fff; display: flex; flex-direction: column; gap: 8px; }
+        .health-item.ok { border-color: #bbf7d0; background: linear-gradient(180deg, #fff 0%, #f0fdf4 100%); }
+        .health-item.warn { border-color: #fde68a; background: linear-gradient(180deg, #fff 0%, #fffbeb 100%); }
+        .health-item.error { border-color: #fecaca; background: linear-gradient(180deg, #fff 0%, #fef2f2 100%); }
+        .health-item.info { border-color: #bfdbfe; background: linear-gradient(180deg, #fff 0%, #eff6ff 100%); }
+        .health-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+        .health-title { font-weight: 800; color: var(--gray-900); }
+        .health-message { color: var(--gray-600); font-size: 12px; line-height: 1.5; }
+        .health-badge { border-radius: 999px; padding: 4px 8px; font-size: 11px; font-weight: 800; white-space: nowrap; }
+        .health-badge.ok { background: #dcfce7; color: #166534; }
+        .health-badge.warn { background: #fef3c7; color: #92400e; }
+        .health-badge.error { background: #fee2e2; color: #991b1b; }
+        .health-badge.info { background: #dbeafe; color: #1d4ed8; }
+        .env-grid { padding: 16px; display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
+        .env-card { position: relative; overflow: hidden; border: 1px solid var(--gray-200); border-radius: 16px; padding: 14px; background: linear-gradient(180deg, #fff 0%, #f8fafc 100%); box-shadow: 0 8px 18px rgba(15, 23, 42, .05); }
+        .env-card.active { border-color: #86efac; background: linear-gradient(180deg, #fff 0%, #ecfdf5 100%); }
+        .env-card.partial { border-color: #fde68a; background: linear-gradient(180deg, #fff 0%, #fffbeb 100%); }
+        .env-card-head { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; margin-bottom: 8px; }
+        .env-icon { width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center; background: #e0f2fe; color: #0369a1; font-weight: 900; }
+        .env-title { font-weight: 800; color: var(--gray-900); }
+        .env-desc { color: var(--gray-600); font-size: 12px; line-height: 1.5; margin-top: 2px; }
+        .env-services { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
+        .env-chip { border-radius: 999px; padding: 4px 8px; background: var(--gray-100); color: var(--gray-700); font-size: 11px; font-weight: 700; }
+        .env-actions { display: flex; gap: 8px; align-items: center; justify-content: space-between; margin-top: 10px; }
+        .env-progress { height: 6px; background: var(--gray-200); border-radius: 999px; overflow: hidden; flex: 1; }
+        .env-progress span { display: block; height: 100%; background: linear-gradient(90deg, #22c55e, #0ea5e9); border-radius: 999px; }
+        .container-toolbar { display: flex; justify-content: space-between; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--gray-100); flex-wrap: wrap; background: #f8fafc; }
+        .container-search { flex: 1; min-width: 220px; }
+        .container-search input { width: 100%; border: 1px solid var(--gray-200); border-radius: 10px; padding: 10px 12px; outline: none; }
+        .container-search input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37, 99, 235, .12); }
+        .container-filters { display: flex; gap: 8px; flex-wrap: wrap; }
+        .filter-pill { border: 1px solid var(--gray-200); background: white; color: var(--gray-700); border-radius: 999px; padding: 8px 12px; cursor: pointer; font-size: 12px; font-weight: 700; }
+        .filter-pill.active { border-color: var(--primary); background: #dbeafe; color: #1d4ed8; }
+        .container-card-grid { padding: 16px; display: grid; grid-template-columns: repeat(auto-fit, minmax(310px, 1fr)); gap: 12px; }
+        .container-card { border: 1px solid var(--gray-200); border-radius: 16px; padding: 14px; background: white; box-shadow: 0 8px 18px rgba(15, 23, 42, .05); }
+        .container-card.running { border-color: #86efac; background: linear-gradient(180deg, #fff 0%, #f0fdf4 100%); }
+        .container-card.exited, .container-card.created, .container-card.stopped { border-color: #fecaca; background: linear-gradient(180deg, #fff 0%, #fff7f7 100%); }
+        .container-card-head { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; margin-bottom: 10px; }
+        .container-card-title { font-weight: 800; color: var(--gray-900); word-break: break-all; }
+        .container-card-image { color: var(--gray-500); font-size: 11px; word-break: break-all; margin-top: 3px; }
+        .container-meta-grid { display: grid; gap: 6px; color: var(--gray-600); font-size: 12px; line-height: 1.5; }
+        .container-meta-grid strong { color: var(--gray-800); }
+        .container-ports { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+        .port-chip { border-radius: 999px; padding: 4px 8px; background: #e0f2fe; color: #0369a1; font-size: 11px; font-weight: 700; }
+        .container-card-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+        .container-empty { margin: 16px; border: 1px dashed var(--gray-300); border-radius: 16px; padding: 24px; text-align: center; color: var(--gray-500); background: #f8fafc; }
+        /* Workbench visual refresh */
+        :root {
+            --primary: #0f766e;
+            --primary-dark: #115e59;
+            --accent: #f97316;
+            --ink: #0b1220;
+            --panel: rgba(255, 255, 255, .9);
+            --panel-strong: rgba(255, 255, 255, .97);
+            --line: rgba(15, 23, 42, .1);
+            --gray-300: #d1d5db;
+            --gray-500: #6b7280;
+            --gray-700: #374151;
+            --radius: 18px;
+            --shadow: 0 18px 45px rgba(15, 23, 42, .12);
+        }
+
+        html { scroll-behavior: smooth; }
+
+        body {
+            font-family: "HarmonyOS Sans SC", "MiSans", "Source Han Sans SC", "PingFang SC", sans-serif;
+            background:
+                radial-gradient(circle at top left, rgba(20, 184, 166, .22), transparent 34vw),
+                radial-gradient(circle at top right, rgba(249, 115, 22, .16), transparent 28vw),
+                linear-gradient(145deg, #07111f 0%, #102033 42%, #f1f5f9 42%, #eef6f4 100%);
+            color: var(--gray-800);
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            background-image:
+                linear-gradient(rgba(255, 255, 255, .045) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, .045) 1px, transparent 1px);
+            background-size: 42px 42px;
+            mask-image: linear-gradient(180deg, rgba(0, 0, 0, .9), transparent 72%);
+        }
+
+        .app-container.active { position: relative; }
+
+        .header {
+            position: sticky;
+            top: 0;
+            z-index: 80;
+            background: rgba(7, 17, 31, .82);
+            color: #ecfeff;
+            border-bottom: 1px solid rgba(255, 255, 255, .12);
+            box-shadow: 0 16px 38px rgba(2, 6, 23, .22);
+        }
+
+        .brand-lockup { display: flex; align-items: center; gap: 12px; min-width: 240px; }
+        .brand-mark { width: 42px; height: 42px; border-radius: 14px; display: grid; place-items: center; background: linear-gradient(135deg, #14b8a6, #f97316); color: #fff; font-weight: 900; letter-spacing: -.04em; box-shadow: 0 12px 28px rgba(20, 184, 166, .28); }
+        .brand-copy h1 { font-size: 18px; letter-spacing: -.02em; line-height: 1.2; }
+        .brand-subtitle { color: rgba(236, 254, 255, .68); font-size: 12px; margin-top: 2px; }
+        .top-nav { display: flex; align-items: center; gap: 6px; margin-left: auto; margin-right: 8px; }
+        .top-nav a { color: rgba(236, 254, 255, .78); text-decoration: none; font-size: 13px; font-weight: 700; padding: 8px 12px; border-radius: 999px; }
+        .top-nav a:hover { background: rgba(255, 255, 255, .1); color: #fff; }
+        .header-actions { gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+        .header-actions .btn { border: 1px solid rgba(255, 255, 255, .14); box-shadow: none; }
+        .header-actions .refresh-btn { background: rgba(20, 184, 166, .16); color: #ccfbf1; }
+
+        .main-content { max-width: 1500px; padding: 28px; }
+        .btn { border-radius: 12px; letter-spacing: .01em; }
+        .btn:hover { transform: translateY(-1px); box-shadow: 0 10px 24px rgba(15, 23, 42, .12); }
+        .btn-primary, .btn-success { background: linear-gradient(135deg, #0f766e, #14b8a6); }
+
+        .hero-panel {
+            display: grid;
+            grid-template-columns: minmax(0, 1.25fr) minmax(320px, .75fr);
+            gap: 22px;
+            margin-bottom: 20px;
+            padding: 28px;
+            border-radius: 28px;
+            color: #ecfeff;
+            overflow: hidden;
+            position: relative;
+            background:
+                linear-gradient(135deg, rgba(7, 17, 31, .96), rgba(15, 118, 110, .88)),
+                radial-gradient(circle at 78% 10%, rgba(249, 115, 22, .34), transparent 34%);
+            border: 1px solid rgba(255, 255, 255, .14);
+            box-shadow: 0 28px 70px rgba(2, 6, 23, .25);
+        }
+
+        .hero-panel::after {
+            content: '';
+            position: absolute;
+            width: 320px;
+            height: 320px;
+            right: -110px;
+            bottom: -170px;
+            border-radius: 50%;
+            background: rgba(249, 115, 22, .26);
+            filter: blur(2px);
+        }
+
+        .hero-copy, .hero-side { position: relative; z-index: 1; }
+        .hero-eyebrow { color: #99f6e4; font-size: 12px; font-weight: 900; letter-spacing: .16em; margin-bottom: 12px; }
+        .hero-copy h2 { font-size: clamp(28px, 5vw, 52px); line-height: 1; letter-spacing: -.05em; max-width: 760px; }
+        .hero-copy p { color: rgba(236, 254, 255, .76); line-height: 1.75; margin-top: 16px; max-width: 760px; }
+        .hero-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 22px; }
+        .hero-actions .btn { width: auto; border: 1px solid rgba(255, 255, 255, .16); }
+        .hero-primary { background: #ecfeff; color: #0f766e; }
+        .hero-secondary { background: rgba(255, 255, 255, .1); color: #ecfeff; }
+        .hero-safe-note { display: inline-flex; align-items: center; gap: 8px; margin-top: 18px; padding: 8px 12px; border-radius: 999px; background: rgba(20, 184, 166, .13); color: #ccfbf1; font-size: 12px; font-weight: 800; }
+        .hero-side { display: grid; gap: 12px; align-content: start; }
+        .hero-status-card { padding: 18px; border-radius: 22px; background: rgba(255, 255, 255, .1); border: 1px solid rgba(255, 255, 255, .14); backdrop-filter: blur(12px); }
+        .hero-status-card span { display: block; color: #99f6e4; font-size: 12px; font-weight: 900; letter-spacing: .08em; }
+        .hero-status-card strong { display: block; margin-top: 8px; font-size: 24px; }
+        .hero-status-card p { color: rgba(236, 254, 255, .72); font-size: 13px; line-height: 1.6; margin-top: 8px; }
+        .hero-mini-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+        .hero-mini { padding: 14px; border-radius: 18px; background: rgba(255, 255, 255, .92); color: var(--gray-800); border: 1px solid rgba(255, 255, 255, .7); }
+        .hero-mini span { display: block; color: var(--gray-500); font-size: 12px; font-weight: 800; }
+        .hero-mini strong { display: block; color: var(--ink); font-size: 26px; margin-top: 4px; }
+
+        .stats-bar { grid-template-columns: repeat(3, minmax(180px, 1fr)); gap: 14px; margin-bottom: 20px; }
+        .stat-card { position: relative; overflow: hidden; border: 1px solid rgba(15, 23, 42, .08); background: rgba(255, 255, 255, .9); box-shadow: 0 14px 36px rgba(15, 23, 42, .08); }
+        .stat-card::after { content: ''; position: absolute; inset: auto 18px 0 auto; width: 80px; height: 80px; border-radius: 50%; background: rgba(20, 184, 166, .08); transform: translateY(35%); }
+        .stat-card .label { color: var(--gray-500); font-weight: 800; }
+        .stat-card .value { color: var(--ink); letter-spacing: -.05em; }
+        .stat-card.running .value { color: #0f766e; }
+        .stat-card.stopped .value { color: #dc2626; }
+
+        .card { border: 1px solid rgba(15, 23, 42, .08); background: var(--panel-strong); border-radius: 22px; box-shadow: var(--shadow); }
+        .card-header { padding: 18px 20px; background: linear-gradient(180deg, rgba(248, 250, 252, .94), rgba(255, 255, 255, .9)); }
+        .card-header h2 { color: var(--ink); font-size: 18px; letter-spacing: -.02em; }
+        .section-kicker { color: var(--gray-500); font-size: 12px; line-height: 1.6; margin-top: 4px; }
+        .section-note { padding: 12px 18px 0; color: var(--gray-600); font-size: 13px; line-height: 1.7; }
+
+        .health-grid { grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 14px; padding: 18px; }
+        .health-item { position: relative; border-radius: 18px; padding: 14px; box-shadow: 0 10px 26px rgba(15, 23, 42, .05); }
+        .health-item::before { content: ''; position: absolute; left: 14px; top: 16px; width: 8px; height: 8px; border-radius: 999px; background: currentColor; }
+        .health-head { padding-left: 16px; }
+        .health-title { font-size: 14px; }
+        .health-message { padding-left: 16px; }
+        .health-suggestion { padding-left: 16px; color: var(--gray-500); font-size: 11px; line-height: 1.5; }
+
+        .project-grid { grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; padding: 18px; }
+        .project-card { border-radius: 20px; padding: 16px; background: linear-gradient(180deg, #fff, #f8fafc); box-shadow: 0 12px 28px rgba(15, 23, 42, .06); transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease; }
+        .project-card:hover { transform: translateY(-2px); box-shadow: 0 18px 40px rgba(15, 23, 42, .1); }
+        .project-card.active { border-color: rgba(15, 118, 110, .35); background: linear-gradient(180deg, #fff, #ecfdf5); }
+        .project-card-top { display: flex; justify-content: space-between; gap: 14px; align-items: flex-start; }
+        .project-identity { display: flex; gap: 12px; min-width: 0; }
+        .project-avatar { width: 42px; height: 42px; border-radius: 14px; display: grid; place-items: center; flex: 0 0 auto; color: #fff; background: linear-gradient(135deg, #0f766e, #14b8a6); font-weight: 900; }
+        .project-name { color: var(--ink); font-size: 16px; font-weight: 900; word-break: break-word; }
+        .project-key { color: var(--gray-500); font-size: 12px; margin-top: 3px; word-break: break-all; }
+        .project-path { color: var(--gray-600); font-size: 12px; line-height: 1.55; word-break: break-all; margin-top: 12px; padding: 10px; background: rgba(15, 23, 42, .04); border-radius: 12px; }
+        .project-meta-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
+        .project-meta-tile { border: 1px solid rgba(15, 23, 42, .07); border-radius: 13px; padding: 9px; background: rgba(255, 255, 255, .78); }
+        .project-meta-tile span { display: block; color: var(--gray-500); font-size: 11px; font-weight: 800; }
+        .project-meta-tile strong { display: block; color: var(--gray-800); font-size: 12px; margin-top: 3px; word-break: break-all; }
+        .project-services { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+        .project-chip { border-radius: 999px; padding: 4px 8px; background: #ecfeff; color: #0f766e; font-size: 11px; font-weight: 800; }
+        .project-actions { display: grid; gap: 9px; margin-top: 14px; }
+        .project-action-group { display: flex; flex-wrap: wrap; gap: 8px; }
+        .project-action-label { width: 100%; color: var(--gray-500); font-size: 11px; font-weight: 900; letter-spacing: .08em; }
+
+        .project-form { margin: 0 18px 18px; border: 1px solid rgba(15, 23, 42, .08); border-radius: 18px; background: linear-gradient(180deg, #fff, #f8fafc); }
+        .project-form input, .project-form select, .container-search input { border-radius: 12px; padding: 10px 12px; }
+
+        .env-grid { grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 14px; padding: 18px; }
+        .env-card { border-radius: 20px; padding: 15px; box-shadow: 0 12px 28px rgba(15, 23, 42, .06); }
+        .env-icon { background: linear-gradient(135deg, #ccfbf1, #fed7aa); color: #0f766e; }
+        .env-actions .btn { min-width: 88px; }
+
+        .container-toolbar { padding: 14px 18px; background: rgba(248, 250, 252, .88); }
+        .filter-pill { border-radius: 999px; }
+        .filter-pill.active { border-color: #0f766e; background: #ccfbf1; color: #115e59; }
+        .container-card-grid { grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 14px; padding: 18px; }
+        .container-card { border-radius: 20px; padding: 15px; box-shadow: 0 12px 28px rgba(15, 23, 42, .06); }
+        .container-card-title { font-size: 14px; }
+        .container-card-actions .btn { padding: 8px 12px; }
+
+        @media (max-width: 1080px) {
+            .hero-panel { grid-template-columns: 1fr; }
+            .top-nav { display: none; }
+        }
+
+        @media (max-width: 760px) {
+            .header { align-items: flex-start; gap: 12px; flex-direction: column; }
+            .header-actions { width: 100%; justify-content: flex-start; }
+            .main-content { padding: 16px; }
+            .hero-panel { padding: 20px; border-radius: 22px; }
+            .stats-bar { grid-template-columns: 1fr; }
+            .project-grid, .container-card-grid, .env-grid, .health-grid { grid-template-columns: 1fr; }
+            .project-meta-grid, .hero-mini-grid { grid-template-columns: 1fr; }
+        }
+        @media (max-width: 980px) { .site-center-layout { grid-template-columns: 1fr; height: 82vh; } .site-builder { border-right: 0; border-bottom: 1px solid var(--gray-200); max-height: 420px; } .site-stat-grid { grid-template-columns: 1fr; } }
+        @media (max-width: 640px) { .site-form-grid { grid-template-columns: 1fr; } .site-toolbar { align-items: stretch; } }
+    </style>
+</head>
+
+<body>
+    <!-- Main app -->
+    <div class="app-container" id="appPage">
+                <header class="header">
+            <div class="brand-lockup">
+                <div class="brand-mark">DD</div>
+                <div class="brand-copy">
+                    <h1>本地开发工作台</h1>
+                    <div class="brand-subtitle">Docker Develop Console</div>
+                </div>
+            </div>
+            <nav class="top-nav" aria-label="工作台导航">
+                <a href="#healthPanel">健康</a>
+                <a href="#projectPanel">项目</a>
+                <a href="#envPanel">环境</a>
+                <a href="#containerPanel">容器</a>
+            </nav>
+            <div class="header-actions">
+                <button class="btn btn-sm refresh-btn" onclick="refreshDashboard()">刷新工作台</button>
+                <button class="btn btn-sm" style="background:rgba(236,254,255,.12);color:#ccfbf1" onclick="showSitePanel()">站点中心</button>
+                <button class="btn btn-sm" style="background:rgba(249,115,22,.16);color:#fed7aa" onclick="showConfigPanel()">配置中心</button>
+            </div>
+        </header>
+        <main class="main-content">
+            <section class="hero-panel" id="workbenchHero">
+                <div class="hero-copy">
+                    <div class="hero-eyebrow">LOCAL DOCKER WORKBENCH</div>
+                    <h2>把项目、站点和容器收进一个本地控制台。</h2>
+                    <p>这里负责管理开发环境：启动项目、接入 Laravel / Hyperf / Go、检查 Nginx 和配置文件。源码仍然留在你的项目目录里，面板只处理环境资源。</p>
+                    <div class="hero-actions">
+                        <button class="btn hero-primary" onclick="openNewProjectForm()">新增项目</button>
+                        <button class="btn hero-secondary" onclick="showSitePanel()">管理站点</button>
+                        <button class="btn hero-secondary" onclick="runHealthCheck()">重新体检</button>
+                    </div>
+                    <div class="hero-safe-note">安全边界：只管理 Docker / Nginx / 面板记录，不删除项目源码</div>
+                </div>
+                <div class="hero-side">
+                    <div class="hero-status-card">
+                        <span>当前状态</span>
+                        <strong id="heroStatusTitle">正在加载环境...</strong>
+                        <p id="heroStatusText">正在读取 Docker 容器、项目配置、站点和快捷环境。</p>
+                    </div>
+                    <div class="hero-mini-grid">
+                        <div class="hero-mini"><span>项目</span><strong id="heroProjectCount">-</strong></div>
+                        <div class="hero-mini"><span>运行容器</span><strong id="heroRunningCount">-</strong></div>
+                        <div class="hero-mini"><span>快捷环境</span><strong id="heroPresetCount">-</strong></div>
+                        <div class="hero-mini"><span>配置接口</span><strong id="heroConfigState">检查中</strong></div>
+                    </div>
+                </div>
+            </section>
+            <div class="stats-bar">
+                <div class="stat-card">
+                    <div class="label">总容器数</div>
+                    <div class="value" id="totalCount">-</div>
+                </div>
+                <div class="stat-card running">
+                    <div class="label">运行中</div>
+                    <div class="value" id="runningCount">-</div>
+                </div>
+                <div class="stat-card stopped">
+                    <div class="label">已停止</div>
+                    <div class="value" id="stoppedCount">-</div>
+                </div>
+            </div>
+
+            <div id="healthPanel" class="card" style="margin-bottom:24px">
+                <div class="card-header">
+                    <div>
+                        <h2>环境健康检查</h2>
+                        <div class="section-kicker">自动确认 Docker、项目、站点和配置中心是否处于可用状态。</div>
+                    </div>
+                    <button class="btn btn-sm refresh-btn" onclick="runHealthCheck()">重新检查</button>
+                </div>
+                <div id="healthCheckList" class="health-grid">
+                    <div class="health-item info">
+                        <div class="health-head"><span class="health-title">等待检查</span><span class="health-badge info">待运行</span></div>
+                        <div class="health-message">页面加载后会自动检查当前开发环境。</div>
+                    </div>
+                </div>
+            </div>
+            <div id="projectPanel" class="card" style="margin-bottom:24px">
+                <div class="card-header">
+                    <div>
+                        <h2>项目启动器</h2>
+                        <div class="section-kicker">接入、启动、运行命令和查看日志都从这里开始。</div>
+                    </div>
+                    <div style="display:flex;gap:8px">
+                        <button class="btn btn-sm refresh-btn" onclick="loadProjects()">刷新</button>
+                        <button class="btn btn-sm btn-success" onclick="openNewProjectForm()">新增项目</button>
+                    </div>
+                </div>
+                <div class="section-note">Laravel/PHP 项目命令优先在配置的 PHP-FPM 服务里执行；workspace 只是备用工具箱。Hyperf 默认使用宿主机端口映射到容器内 9501。</div>
+                <div id="projectList" class="project-grid">
+                    Loading...
+                </div>
+                <div id="projectForm" class="project-form">
+                    <div class="project-field project-field-wide">
+                        <label>接入方式</label>
+                        <select id="projectMode" onchange="applyProjectModeVisibility()">
+                            <option value="scaffold">完整接入环境（推荐）</option>
+                            <option value="card">仅添加管理卡片</option>
+                        </select>
+                        <div id="projectModeHint" class="project-help">完整接入会生成项目卡片，并按类型写入 Nginx 或 docker-compose 环境配置；不会修改项目源码。</div>
+                    </div>
+                    <input id="projectKey" placeholder="项目标识，例如 order-api" oninput="handleProjectKeyInput()">
+                    <input id="projectName" placeholder="项目名称，例如 Order API（可留空默认同标识）">
+                    <select id="projectType" onchange="applyProjectTypeDefaults(true)">
+                        <option value="hyperf">Hyperf</option>
+                        <option value="laravel">Laravel</option>
+                        <option value="php-fpm">PHP-FPM</option>
+                        <option value="static">Static</option>
+                    </select>
+                    <select id="projectPhp" onchange="handleProjectPhpChange()">
+                        <option value="php83-fpm">PHP 8.3</option>
+                        <option value="php81-fpm">PHP 8.1</option>
+                        <option value="php80-fpm">PHP 8.0</option>
+                        <option value="php73-fpm">PHP 7.3</option>
+                        <option value="php-fpm">默认 PHP</option>
+                    </select>
+                    <input id="projectPath" placeholder="项目路径，例如 C:\Develop\Hua\Projects\Demo 或 /develop/demo">
+                    <input id="projectPort" type="number" min="1024" max="65535" placeholder="访问端口，例如 9502">
+                    <div class="project-field project-field-wide">
+                        <label>服务（可多选）</label>
+                        <div id="projectServiceOptions" class="checkbox-grid"></div>
+                        <input id="projectServices" placeholder="自定义服务，例如 nginx,php83-fpm,redis" oninput="syncProjectServiceChecksFromText()">
+                        <div class="project-help">常用服务可以直接勾选；如果有自定义 service，也可以在文本框里补充，多个服务用逗号或空格分隔。</div>
+                    </div>
+                    <div id="projectWebOptions" class="project-field project-field-wide">
+                        <label>Nginx 站点选项（Laravel / PHP-FPM / Static）</label>
+                        <input id="projectRoot" placeholder="站点根目录，留空时 Laravel/PHP 默认 public，Static 默认项目路径">
+                        <input id="projectServerName" placeholder="server_name，默认 localhost">
+                        <label style="display:flex;align-items:center;gap:6px;font-weight:400">
+                            <input id="projectForce" type="checkbox" style="width:auto"> 覆盖同名 Nginx 站点配置
+                        </label>
+                        <div class="project-help">只有“完整接入环境”会写入 Nginx 配置；这里不会删除或修改项目源码。</div>
+                    </div>
+                    <select id="projectCommandPreset" onchange="applyProjectCommandPreset()">
+                        <option value="">命令预设（可选）</option>
+                        <option value="php bin/hyperf.php start">Hyperf 启动</option>
+                        <option value="php artisan octane:start --host=0.0.0.0">Laravel Octane</option>
+                        <option value="php artisan serve --host=0.0.0.0">Laravel Serve</option>
+                        <option value="go run .">Go Run</option>
+                    </select>
+                    <input id="projectCommand" placeholder="自定义启动命令，可留空">
+                    <select id="projectLogPreset" onchange="applyProjectLogPreset()">
+                        <option value="">日志预设（可选）</option>
+                        <option value="runtime/logs/hyperf.log">Hyperf 日志</option>
+                        <option value="storage/logs/laravel.log">Laravel 日志</option>
+                        <option value="runtime/logs/app.log">通用 runtime 日志</option>
+                    </select>
+                    <input id="projectLog" placeholder="日志路径，可留空">
+                    <input id="projectUrl" placeholder="访问地址，例如 http://localhost:9502">
+                    <div class="project-field project-field-wide" style="display:flex;flex-direction:row;flex-wrap:wrap;gap:8px">
+                        <button id="projectPreviewBtn" class="btn" style="background:#f3f4f6;color:#374151" onclick="previewProjectConfig()">预览配置</button>
+                        <button id="projectSaveBtn" class="btn btn-success" onclick="saveProject()">生成并保存</button>
+                        <button class="btn" style="background:#f9fafb;color:#374151" onclick="clearProjectForm()">清空</button>
+                    </div>
+                </div>
+            </div>
+            <!-- 快捷环境面板 -->
+            <div id="envPanel" class="card" style="margin-bottom:24px">
+                <div class="card-header">
+                    <div>
+                        <h2>快捷环境</h2>
+                        <div class="section-kicker">一键启动常用开发组合，适合快速切换 PHP / Go / 数据服务。</div>
+                    </div>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+                        <button class="btn btn-sm refresh-btn" onclick="loadPresets()">刷新环境</button>
+                        <button class="btn btn-sm btn-danger" onclick="stopAllContainers()">停止所有</button>
+                    </div>
+                </div>
+                <div id="presetList" class="env-grid">加载中...</div>
+            </div>
+
+            <div id="containerPanel" class="card">
+                <div class="card-header">
+                    <div>
+                        <h2>容器中心</h2>
+                        <div class="section-kicker">搜索、筛选和管理当前 Docker 开发容器，危险操作会明确确认。</div>
+                    </div>
+                    <button class="btn btn-sm refresh-btn" onclick="loadContainers()">刷新容器</button>
+                </div>
+                <div class="container-toolbar">
+                    <div class="container-search">
+                        <input id="containerSearch" placeholder="搜索容器、镜像、端口" oninput="renderContainers()">
+                    </div>
+                    <div class="container-filters">
+                        <button class="filter-pill active" data-container-filter="all" onclick="setContainerFilter('all')">全部</button>
+                        <button class="filter-pill" data-container-filter="running" onclick="setContainerFilter('running')">运行中</button>
+                        <button class="filter-pill" data-container-filter="stopped" onclick="setContainerFilter('stopped')">已停止</button>
+                    </div>
+                </div>
+                <div id="containerList">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        <p>加载中...</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- 日志模态框 -->
+    <div class="modal" id="logsModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="logsTitle">容器日志</h3>
+                <button class="modal-close" onclick="closeLogsModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="logs-container" id="logsContent">加载中...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 配置中心模态框 -->
+    <div class="modal" id="configModal">
+        <div class="modal-content config-center-modal">
+            <div class="modal-header config-center-header">
+                <div class="config-center-title">
+                    <h3>配置中心</h3>
+                    <small id="configCenterSubtitle">按用途管理 Docker、项目、Nginx、PHP 和 Redis 配置</small>
+                </div>
+                <button class="modal-close" onclick="closeConfigModal()">×</button>
+            </div>
+            <div class="modal-body config-center-body">
+                <div class="config-center-layout">
+                    <aside class="config-sidebar">
+                        <div class="config-search-row">
+                            <input id="configFileSearch" placeholder="搜索配置，例如 php、nginx、env" oninput="renderConfigFileList()">
+                            <button class="btn btn-sm" style="background:var(--gray-100);color:var(--gray-700)" onclick="loadConfigFiles(true)">刷新</button>
+                        </div>
+                        <div id="configFileList" class="config-file-list">加载中...</div>
+                    </aside>
+
+                    <section class="config-editor-panel">
+                        <div class="config-editor-toolbar">
+                            <div>
+                                <div id="currentFileName" class="config-current-name">请选择配置文件</div>
+                                <div id="currentFilePath" class="config-current-path">左侧选择一个文件后开始编辑</div>
+                                <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
+                                    <span id="currentFileRisk" class="config-pill neutral">未选择</span>
+                                    <span id="currentFileValidator" class="config-pill neutral">未选择验证器</span>
+                                    <span id="currentFileDirty" class="config-pill neutral">无修改</span>
+                                </div>
+                            </div>
+                            <div class="config-toolbar-actions">
+                                <button id="configValidateBtn" class="btn btn-sm" style="background:var(--gray-100);color:var(--gray-800)" onclick="validateConfig()">验证配置</button>
+                                <button id="configApplyBtn" class="btn btn-sm" style="display:none;background:#dbeafe;color:#1d4ed8" onclick="applyConfigAction()">应用建议</button>
+                                <button class="btn btn-sm btn-success" onclick="saveConfigFile()">保存并备份</button>
+                            </div>
+                        </div>
+                        <div class="config-editor-wrap">
+                            <textarea id="configEditor" class="config-editor" spellcheck="false" placeholder="选择左侧文件进行编辑..." disabled></textarea>
+                            <div id="configEmptyState" class="config-empty-state">
+                                <div>
+                                    <h3 style="margin-bottom:8px;color:var(--gray-800)">选择一个配置文件开始</h3>
+                                    <p>这里会显示文件状态、风险级别、保存后的下一步建议，以及可恢复的备份。</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="config-editor-footer">
+                            <div id="configStatus" class="config-status">等待选择文件...</div>
+                            <div id="configDiffSummary" class="config-muted">无变更</div>
+                        </div>
+                    </section>
+
+                    <aside class="config-inspector">
+                        <div class="config-info-card">
+                            <h4>文件说明</h4>
+                            <div id="configInspector" class="config-muted">选择文件后显示说明。</div>
+                        </div>
+                        <div class="config-info-card">
+                            <h4>备份历史</h4>
+                            <div id="configBackupList" class="config-muted">选择文件后加载备份。</div>
+                        </div>
+                        <div class="config-info-card">
+                            <h4>验证输出</h4>
+                            <div id="configValidationOutput" class="config-output">尚未验证。</div>
+                        </div>
+                    </aside>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- 站点中心模态框 -->
+    <div class="modal" id="siteModal">
+        <div class="modal-content site-center-modal">
+            <div class="modal-header site-center-header">
+                <div class="site-center-title">
+                    <h3>Nginx 站点中心</h3>
+                    <small>创建本地站点、检查访问方式、重载 Nginx，不触碰项目源码。</small>
+                </div>
+                <button class="modal-close" onclick="closeSiteModal()">×</button>
+            </div>
+            <div class="modal-body site-center-body">
+                <div class="site-center-layout">
+                    <section class="site-builder">
+                        <div class="site-section-title">
+                            <div>
+                                <h4>创建新站点</h4>
+                                <div class="site-help">只生成 Nginx 站点配置；项目源码不会被修改。</div>
+                            </div>
+                            <span id="siteModeBadge" class="site-badge info">端口访问</span>
+                        </div>
+                        <div class="site-form-grid">
+                            <div class="site-field">
+                                <label>配置名称</label>
+                                <input type="text" id="siteName" placeholder="classmate" oninput="syncSiteNameHints()">
+                                <div class="site-help">会生成 services/nginx/sites/&lt;名称&gt;.conf</div>
+                            </div>
+                            <div class="site-field">
+                                <label>项目类型</label>
+                                <select id="siteProjectType" onchange="applySiteTypeDefaults()">
+                                    <option value="laravel">Laravel / PHP</option>
+                                    <option value="static">Static 静态站点</option>
+                                    <option value="php">普通 PHP</option>
+                                </select>
+                            </div>
+                            <div class="site-field site-field-wide">
+                                <label>站点根目录</label>
+                                <input type="text" id="siteRoot" placeholder="/develop/myproject/public" oninput="updateAccessPreview()">
+                                <div id="siteRootHint" class="site-help">Laravel 通常填写项目 public 目录，例如 /develop/demo/public。</div>
+                            </div>
+                            <div class="site-field">
+                                <label>PHP 版本</label>
+                                <select id="sitePhpVersion" onchange="updateAccessPreview()">
+                                    <option value="php83-fpm">PHP 8.3</option>
+                                    <option value="php81-fpm">PHP 8.1</option>
+                                    <option value="php80-fpm">PHP 8.0</option>
+                                    <option value="php73-fpm">PHP 7.3</option>
+                                    <option value="php-fpm">默认 PHP</option>
+                                </select>
+                            </div>
+                            <div class="site-field">
+                                <label>访问方式</label>
+                                <select id="siteAccessType" onchange="toggleAccessType()">
+                                    <option value="port">端口访问（推荐）</option>
+                                    <option value="domain">域名访问（需要 hosts）</option>
+                                </select>
+                            </div>
+                            <div class="site-field" id="portInputDiv">
+                                <label>端口号</label>
+                                <input type="number" id="sitePort" value="8080" min="1024" max="65535" oninput="updateAccessPreview()">
+                                <div id="sitePortHint" class="site-help">如果端口未暴露，创建时会尝试写入 docker-compose.yml。</div>
+                            </div>
+                            <div class="site-field" id="domainInputDiv" style="display:none">
+                                <label>本地域名</label>
+                                <input type="text" id="siteServerName" placeholder="classmate.test" oninput="updateAccessPreview()">
+                                <div class="site-help">需要把 127.0.0.1 域名 加到 Windows hosts。</div>
+                            </div>
+                        </div>
+                        <div class="site-preview-card">
+                            <div class="site-help">访问预览</div>
+                            <div id="accessPreview" class="site-preview-url">http://localhost:8080</div>
+                            <div id="siteNextStep" class="site-help" style="margin-top:8px">创建后重载 Nginx 即可访问。</div>
+                            <div class="site-preview-actions">
+                                <button class="btn btn-success" onclick="createSite()">创建站点</button>
+                                <button class="btn btn-sm" style="background:var(--gray-100);color:var(--gray-700)" onclick="fillSiteFromSelectedProject()">从项目填充</button>
+                                <button class="btn btn-sm" style="background:#dbeafe;color:#1d4ed8" onclick="openConfigForSites()">打开站点配置</button>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="site-list-panel">
+                        <div class="site-section-title">
+                            <div>
+                                <h4>现有站点</h4>
+                                <div id="siteSummary" class="site-help">正在加载站点...</div>
+                            </div>
+                            <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+                                <button class="btn btn-sm" style="background:#fbbf24;color:#78350f" onclick="restartNginxContainer()">重启 Nginx</button>
+                                <button class="btn btn-sm" style="background:var(--success);color:white" onclick="reloadNginx()">重载 Nginx</button>
+                            </div>
+                        </div>
+                        <div class="site-stat-grid">
+                            <div class="site-stat"><strong id="siteTotalCount">-</strong><span>站点数量</span></div>
+                            <div class="site-stat"><strong id="sitePortCount">-</strong><span>端口访问</span></div>
+                            <div class="site-stat"><strong id="siteDomainCount">-</strong><span>域名访问</span></div>
+                        </div>
+                        <div class="site-toolbar">
+                            <div class="site-search">
+                                <input id="siteSearch" placeholder="搜索站点、端口、目录、PHP" oninput="renderSites()">
+                            </div>
+                            <span id="siteExposedPorts" class="site-badge gray">端口加载中</span>
+                        </div>
+                        <div style="background:#fef3c7;padding:10px;border-radius:10px;margin-bottom:12px;font-size:12px;color:#92400e">
+                            新增端口映射后需要重启 Nginx 容器；只改站点配置时重载 Nginx 即可。
+                        </div>
+                        <div id="siteList">加载中...</div>
+                    </section>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Project environment delete modal -->
+    <div class="modal" id="projectDeleteModal">
+        <div class="modal-content" style="max-width:720px;max-height:90vh">
+            <div class="modal-header">
+                <h3>删除项目环境</h3>
+                <button class="modal-close" onclick="closeProjectDeleteModal()">×</button>
+            </div>
+            <div class="modal-body" style="padding:20px">
+                <div style="background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;padding:12px;border-radius:8px;margin-bottom:14px;line-height:1.6">
+                    此操作只清理 Docker / Nginx / 面板里的环境记录，不会删除项目源码。
+                </div>
+                <div style="display:grid;gap:6px;margin-bottom:14px;color:var(--gray-700);font-size:13px">
+                    <div><strong>项目名称：</strong> <span id="deleteProjectName"></span></div>
+                    <div><strong>项目标识：</strong> <span id="deleteProjectKey"></span></div>
+                    <div><strong>项目类型：</strong> <span id="deleteProjectType"></span></div>
+                    <div><strong>项目路径：</strong> <span id="deleteProjectPath"></span></div>
+                </div>
+                <div id="deleteDedicatedOptions" style="display:none;background:var(--gray-50);border:1px solid var(--gray-200);border-radius:8px;padding:12px;margin-bottom:12px">
+                    <label style="display:flex;gap:8px;align-items:flex-start;margin-bottom:10px">
+                        <input id="deleteRemoveContainer" type="checkbox" style="margin-top:3px">
+                        <span><strong>删除专属容器</strong><br><small>用于 Hyperf 这类“一项目一容器”的项目，会执行 docker-compose rm -sf 删除对应服务容器。</small></span>
+                    </label>
+                    <label style="display:flex;gap:8px;align-items:flex-start">
+                        <input id="deleteRemoveCompose" type="checkbox" style="margin-top:3px">
+                        <span><strong>删除 docker-compose 服务配置块</strong><br><small>删除 docker-compose.yml 中由面板生成的 BEGIN/END Hyperf 项目配置块。</small></span>
+                    </label>
+                </div>
+                <div id="deleteWebOptions" style="display:none;background:var(--gray-50);border:1px solid var(--gray-200);border-radius:8px;padding:12px;margin-bottom:12px">
+                    <label style="display:flex;gap:8px;align-items:flex-start;margin-bottom:10px">
+                        <input id="deleteRemoveSite" type="checkbox" style="margin-top:3px">
+                        <span><strong>删除 Nginx 站点配置</strong><br><small>先备份为 .bak 文件，再删除 services/nginx/sites/&lt;key&gt;.conf。</small></span>
+                    </label>
+                    <label style="display:flex;gap:8px;align-items:flex-start">
+                        <input id="deleteRemovePort" type="checkbox" style="margin-top:3px">
+                        <span><strong>删除未使用的 Nginx 端口映射</strong><br><small>只有确认没有其它项目或站点配置使用该端口时，才会从 docker-compose.yml 中移除映射。</small></span>
+                    </label>
+                </div>
+                <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:18px">
+                    <button class="btn btn-sm" style="background:var(--gray-100);color:var(--gray-800)" onclick="closeProjectDeleteModal()">取消</button>
+                    <button class="btn btn-sm" style="background:#dc2626;color:white" onclick="confirmProjectDelete()">删除环境</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- 终端模态框 -->
+    <div class="modal" id="terminalModal">
+        <div class="modal-content" style="max-width:900px;max-height:80vh">
+            <div class="modal-header" style="background:var(--gray-900);color:white">
+                <h3>🖥️ <span id="terminalTitle">终端</span></h3>
+                <button class="modal-close" style="color:white" onclick="closeTerminalModal()">×</button>
+            </div>
+            <div class="modal-body" style="padding:0;background:var(--gray-900)">
+                <div id="terminalOutput"
+                    style="font-family:'Consolas','Monaco',monospace;font-size:13px;padding:16px;color:#10b981;min-height:400px;max-height:500px;overflow-y:auto;white-space:pre-wrap">
+                </div>
+            </div>
+            <div
+                style="padding:12px 16px;background:var(--gray-800);display:flex;justify-content:space-between;align-items:center">
+                <span id="terminalStatus" style="color:var(--gray-400);font-size:12px">等待命令...</span>
+                <button class="btn btn-sm" style="background:var(--gray-600);color:white"
+                    onclick="closeTerminalModal()">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API = '/api';
+        let authToken = '';
+        let pendingProjectDelete = null;
+
+        async function ensureAuthToken() {
+            if (authToken) return;
+
+            try {
+                const response = await fetch(API + '/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: 'admin', password: 'docker123' })
+                });
+                const data = await response.json();
+                authToken = data.data?.token || data.token || '';
+            } catch (e) {
+                authToken = '';
+            }
+        }
+
+        async function api(url, options = {}) {
+            options.headers = options.headers || {};
+            if (url !== '/login') await ensureAuthToken();
+            if (authToken) options.headers['Authorization'] = 'Bearer ' + authToken;
+            options.headers['Content-Type'] = 'application/json';
+            const response = await fetch(API + url, options);
+            const text = await response.text();
+
+            let data = {};
+            if (text.trim()) {
+                try {
+                    data = JSON.parse(text);
+                } catch (e) {
+                    const preview = text.length > 600 ? text.slice(0, 600) + '\n...' : text;
+                    throw new Error(`接口返回异常（HTTP ${response.status}）：\n${preview}`);
+                }
+            }
+
+            if (!response.ok) {
+                throw new Error(data.error || data.message || `请求失败（HTTP ${response.status}）`);
+            }
+
+            return data;
+        }
+
+        async function checkAuth() {
+            showApp();
+            refreshDashboard();
+        }
+
+        function showApp() {
+            document.getElementById('appPage').classList.add('active');
+        }
+
+        let cachedContainers = [];
+        let containerFilter = 'all';
+
+        async function loadContainers() {
+            try {
+                const data = await api('/containers');
+                cachedContainers = data.containers || [];
+                const running = cachedContainers.filter(c => c.state === 'running').length;
+                document.getElementById('totalCount').textContent = cachedContainers.length;
+                document.getElementById('runningCount').textContent = running;
+                document.getElementById('stoppedCount').textContent = cachedContainers.length - running;
+                updateHeroStatus({ containers: running });
+                renderContainers();
+            } catch (e) {
+                updateHeroStatus({ containers: '异常' });
+                document.getElementById('containerList').innerHTML =
+                    `<div class="container-empty" style="color:var(--danger)">加载失败：${escapeHtml(e.message)}</div>`;
+            }
+        }
+
+        function refreshDashboard() {
+            loadProjects();
+            loadPresets();
+            loadContainers();
+            runHealthCheck();
+        }
+
+        function setContainerFilter(filter) {
+            containerFilter = filter;
+            document.querySelectorAll('[data-container-filter]').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.containerFilter === filter);
+            });
+            renderContainers();
+        }
+
+        function renderContainers(containers = cachedContainers) {
+            const list = document.getElementById('containerList');
+            if (!list) return;
+            const query = (document.getElementById('containerSearch')?.value || '').trim().toLowerCase();
+            let visible = (containers || []).filter(c => {
+                const isRunning = c.state === 'running';
+                if (containerFilter === 'running' && !isRunning) return false;
+                if (containerFilter === 'stopped' && isRunning) return false;
+                const haystack = [c.name, c.image, c.status, c.ports, c.id].join(' ').toLowerCase();
+                return !query || haystack.includes(query);
+            });
+
+            visible = visible.sort((a, b) => Number(b.state === 'running') - Number(a.state === 'running') || String(a.name).localeCompare(String(b.name)));
+
+            if (!visible.length) {
+                list.innerHTML = '<div class="container-empty">没有匹配的容器。可以切换筛选条件或刷新容器列表。</div>';
+                return;
+            }
+            list.innerHTML = `<div class="container-card-grid">${visible.map(renderContainerCard).join('')}</div>`;
+        }
+
+
+        function containerStateLabel(state) {
+            const labels = { running: '运行中', exited: '已退出', stopped: '已停止', created: '已创建', paused: '已暂停', restarting: '重启中' };
+            return labels[state] || state || '未知';
+        }
+        function renderContainerCard(c) {
+            const running = c.state === 'running';
+            const stateClass = running ? 'running' : (c.state || 'stopped');
+            const ports = parseContainerPorts(c.ports);
+            const stateLabel = containerStateLabel(c.state || (running ? 'running' : 'stopped'));
+            return `
+                <div class="container-card ${escapeHtml(stateClass)}">
+                    <div class="container-card-head">
+                        <div>
+                            <div class="container-card-title">${escapeHtml(c.name || '-')}</div>
+                            <div class="container-card-image">${escapeHtml(c.image || '-')}</div>
+                        </div>
+                        <span class="status-badge ${escapeHtml(c.state || 'stopped')}">${escapeHtml(stateLabel)}</span>
+                    </div>
+                    <div class="container-meta-grid">
+                        <div><strong>ID：</strong><span class="container-id">${escapeHtml(c.id || '-')}</span></div>
+                        <div><strong>状态：</strong>${escapeHtml(c.status || '-')}</div>
+                    </div>
+                    <div class="container-ports">
+                        ${ports.length ? ports.map(port => `<span class="port-chip">${escapeHtml(port)}</span>`).join('') : '<span class="env-chip">无端口映射</span>'}
+                    </div>
+                    <div class="container-card-actions">
+                        ${running ? `
+                            <button class="btn btn-sm" style="background:#fee2e2;color:#991b1b" onclick="stopContainer(${jsArg(c.id)})">停止</button>
+                            <button class="btn btn-sm" style="background:#fef3c7;color:#92400e" onclick="restartContainer(${jsArg(c.id)})">重启</button>
+                        ` : `<button class="btn btn-sm btn-success" onclick="startContainer(${jsArg(c.id)})">启动</button>`}
+                        <button class="btn btn-sm" style="background:#e0e7ff;color:#3730a3" onclick="showLogs(${jsArg(c.id)}, ${jsArg(c.name || '')})">日志</button>
+                        <button class="btn btn-sm" style="background:#fee2e2;color:#991b1b" onclick="removeContainer(${jsArg(c.id)}, ${jsArg(c.name || '')})">删除</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function parseContainerPorts(ports) {
+            return String(ports || '').split(',').map(item => item.trim()).filter(Boolean);
+        }
+        // ============ 环境健康检查 ============
+        async function runHealthCheck() {
+            const box = document.getElementById('healthCheckList');
+            if (!box) return;
+            box.innerHTML = renderHealthItem({ title: '正在检查', status: 'info', badge: '运行中', message: '正在读取容器、项目、站点和配置中心状态...' });
+
+            const checks = [];
+            const [containersResult, projectsResult, sitesResult, presetsResult, configCenterResult] = await Promise.allSettled([
+                api('/containers'),
+                api('/projects'),
+                api('/sites'),
+                api('/env/presets'),
+                api('/config/center/files'),
+            ]);
+
+            if (containersResult.status === 'fulfilled') {
+                const containers = containersResult.value.containers || [];
+                const running = containers.filter(item => item.state === 'running');
+                const names = containers.map(item => item.name || '');
+                const hasPanel = running.some(item => item.name.includes('docker-panel'));
+                const hasNginx = running.some(item => item.name.includes('nginx'));
+                const hasRedis = running.some(item => item.name.includes('redis'));
+                updateHeroStatus({ containers: running.length });
+                checks.push({ title: 'Docker 连接', status: 'ok', badge: '正常', message: `已读取 ${containers.length} 个容器，${running.length} 个运行中。`, suggestion: running.length ? '环境已经有服务在运行，可以继续启动项目或查看日志。' : '当前没有运行容器，可以从快捷环境或项目启动器开始。' });
+                checks.push({ title: '面板容器', status: hasPanel ? 'ok' : 'error', badge: hasPanel ? '运行中' : '异常', message: hasPanel ? 'docker-panel 正在运行。' : '没有检测到运行中的 docker-panel 容器。' });
+                checks.push({ title: 'Nginx', status: hasNginx ? 'ok' : 'warn', badge: hasNginx ? '运行中' : '未运行', message: hasNginx ? 'Nginx 已启动，站点可通过 Nginx 访问。' : 'Nginx 未运行，Laravel/PHP/Static 站点可能访问不了。' });
+                checks.push({ title: 'Redis', status: hasRedis ? 'ok' : 'warn', badge: hasRedis ? '运行中' : '未运行', message: hasRedis ? 'Redis 已启动。' : 'Redis 未运行，如果项目依赖 Redis，需要启动。' });
+                const localPanel = names.some(name => name.includes('docker-panel'));
+                checks.push({ title: '面板暴露范围', status: 'info', badge: '本机优先', message: 'docker-compose 已配置为 127.0.0.1:9501:9501，面板默认只给本机访问。' });
+            } else {
+                updateHeroStatus({ containers: '异常' });
+                checks.push({ title: 'Docker 连接', status: 'error', badge: '失败', message: containersResult.reason?.message || '无法读取容器列表。', suggestion: '优先确认 Docker Desktop 是否已启动。' });
+            }
+
+            if (projectsResult.status === 'fulfilled') {
+                const projects = projectsResult.value.projects || [];
+                const broken = projects.filter(project => project.status && project.status.servicesTotal > 0 && project.status.servicesRunning === 0);
+                updateHeroStatus({ projects: projects.length });
+                checks.push({ title: '项目配置', status: projects.length ? (broken.length ? 'warn' : 'ok') : 'info', badge: `${projects.length} 个项目`, message: broken.length ? `${broken.length} 个项目服务未运行，可在项目卡片启动。` : (projects.length ? 'projects.json 可读取，项目启动器正常。' : '还没有项目配置，可以用“新增项目”接入。'), suggestion: broken.length ? '建议先启动未运行项目，再打开访问地址验证。' : '项目配置正常时，优先用面板操作，少手敲命令。' });
+            } else {
+                updateHeroStatus({ projects: '异常' });
+                checks.push({ title: '项目配置', status: 'error', badge: '失败', message: projectsResult.reason?.message || '无法读取项目配置。', suggestion: '检查 projects.json 是否存在或格式是否正确。' });
+            }
+
+            if (sitesResult.status === 'fulfilled') {
+                const sites = sitesResult.value.sites || [];
+                const ports = sitesResult.value.exposedPorts || [];
+                const missingPorts = sites.filter(site => Number(site.port || 80) !== 80 && !ports.map(Number).includes(Number(site.port)));
+                checks.push({ title: 'Nginx 站点', status: missingPorts.length ? 'warn' : 'ok', badge: `${sites.length} 个站点`, message: missingPorts.length ? `${missingPorts.length} 个站点端口尚未暴露，需要重启 Nginx 或检查 docker-compose.yml。` : `站点配置可读取，已暴露端口：${ports.join(', ') || '无'}`, suggestion: missingPorts.length ? '端口映射变更后通常需要重建或重启 Nginx 容器。' : '站点配置正常，可以从站点中心继续管理。' });
+            } else {
+                checks.push({ title: 'Nginx 站点', status: 'error', badge: '失败', message: sitesResult.reason?.message || '无法读取站点配置。' });
+            }
+
+            if (presetsResult.status === 'fulfilled') {
+                const presets = presetsResult.value.presets || [];
+                updateHeroStatus({ presets: presets.length });
+                checks.push({ title: '快捷环境', status: presets.length ? 'ok' : 'warn', badge: `${presets.length} 个预设`, message: presets.length ? '快捷环境预设可读取。' : '没有读取到快捷环境预设。', suggestion: presets.length ? '可以用快捷环境快速启动 PHP / Go / 数据服务组合。' : '可以后续在环境预设里补充常用组合。' });
+            } else {
+                updateHeroStatus({ presets: '异常' });
+                checks.push({ title: '快捷环境', status: 'error', badge: '失败', message: presetsResult.reason?.message || '无法读取快捷环境。', suggestion: '检查环境预设接口或 docker-panel 容器状态。' });
+            }
+
+            if (configCenterResult.status === 'fulfilled') {
+                const files = configCenterResult.value.files || [];
+                updateHeroStatus({ config: '已就绪' });
+                checks.push({ title: '配置中心增强接口', status: 'ok', badge: '已加载', message: `增强接口已可用，可管理 ${files.length} 个配置文件和备份。`, suggestion: '修改配置前会自动备份，适合在面板里集中维护。' });
+            } else {
+                updateHeroStatus({ config: '待重启' });
+                checks.push({ title: '配置中心增强接口', status: 'warn', badge: '待重启', message: '新接口尚未加载。重启 docker-panel 后可启用备份恢复和智能验证。', suggestion: '如果配置中心功能异常，重启 docker-panel 让新控制器生效。' });
+            }
+
+            box.innerHTML = checks.map(renderHealthItem).join('');
+        }
+
+        function renderHealthItem(item) {
+            const status = item.status || 'info';
+            const suggestion = item.suggestion ? `<div class="health-suggestion">建议：${escapeHtml(item.suggestion)}</div>` : '';
+            return `
+                <div class="health-item ${status}">
+                    <div class="health-head">
+                        <span class="health-title">${escapeHtml(item.title || '')}</span>
+                        <span class="health-badge ${status}">${escapeHtml(item.badge || status)}</span>
+                    </div>
+                    <div class="health-message">${escapeHtml(item.message || '')}</div>
+                    ${suggestion}
+                </div>
+            `;
+        }        async function containerAction(id, action) {
+            try {
+                await api(`/containers/${id}/${action}`, { method: 'POST' });
+                setTimeout(loadContainers, 500);
+            } catch (e) { alert('操作失败: ' + e.message); }
+        }
+        const startContainer = id => containerAction(id, 'start');
+        const stopContainer = id => containerAction(id, 'stop');
+        const restartContainer = id => containerAction(id, 'restart');
+
+        async function removeContainer(id, name) {
+            if (!confirm(`确定要删除容器 "${name}" 吗？\n\n⚠️ 此操作不可恢复！`)) return;
+            try {
+                await api(`/containers/${id}`, { method: 'DELETE' });
+                setTimeout(loadContainers, 500);
+            } catch (e) { alert('删除失败: ' + e.message); }
+        }
+
+        async function showLogs(id, name) {
+            document.getElementById('logsModal').classList.add('active');
+            document.getElementById('logsTitle').textContent = `${name} 的日志`;
+            document.getElementById('logsContent').textContent = '加载中...';
+            try {
+                const data = await api(`/containers/${id}/logs?tail=200`);
+                document.getElementById('logsContent').textContent = data.logs || '暂无日志';
+            } catch (e) {
+                document.getElementById('logsContent').textContent = '加载失败';
+            }
+        }
+        function closeLogsModal() { document.getElementById('logsModal').classList.remove('active'); }
+        document.getElementById('logsModal').onclick = e => e.target.id === 'logsModal' && closeLogsModal();
+
+        // ============ 快捷环境管理 ============
+        let presetStatus = {};
+
+        async function loadPresets() {
+            try {
+                const [presetData, statusData] = await Promise.all([
+                    api('/env/presets'),
+                    api('/env/status')
+                ]);
+                const presets = presetData.presets || [];
+                const status = statusData.status || {};
+                updateHeroStatus({ presets: presets.length });
+                document.getElementById('presetList').innerHTML = presets.map(p => renderPresetCard(p, status[p.key] || {})).join('');
+            } catch (e) {
+                updateHeroStatus({ presets: '异常' });
+                document.getElementById('presetList').innerHTML = `<div class="container-empty" style="color:var(--danger)">快捷环境加载失败：${escapeHtml(e.message)}</div>`;
+            }
+        }
+
+        function renderPresetCard(preset, state) {
+            const running = Number(state.running || 0);
+            const total = Number(state.total || (preset.services || []).length || 0);
+            const active = !!state.active;
+            const partial = running > 0 && !active;
+            const percent = total ? Math.round((running / total) * 100) : 0;
+            const cardClass = active ? 'active' : (partial ? 'partial' : '');
+            const badge = active ? '已就绪' : (partial ? `${running}/${total}` : '未启动');
+            return `
+                <div class="env-card ${cardClass}">
+                    <div class="env-card-head">
+                        <div style="display:flex;gap:10px;align-items:flex-start">
+                            <div class="env-icon">${escapeHtml(preset.icon || 'ENV')}</div>
+                            <div>
+                                <div class="env-title">${escapeHtml(preset.name || preset.key)}</div>
+                                <div class="env-desc">${escapeHtml(preset.description || '')}</div>
+                            </div>
+                        </div>
+                        <span class="site-badge ${active ? 'ok' : (partial ? 'warn' : 'gray')}">${escapeHtml(badge)}</span>
+                    </div>
+                    <div class="env-services">
+                        ${(preset.services || []).map(service => `<span class="env-chip">${escapeHtml(service)}</span>`).join('')}
+                    </div>
+                    <div class="env-actions">
+                        <div class="env-progress"><span style="width:${percent}%"></span></div>
+                        <button class="btn btn-sm ${active ? '' : 'btn-success'}" style="${active ? 'background:#dcfce7;color:#166534' : ''}" onclick="startPreset(${jsArg(preset.key)})">${active ? '重新应用' : '启动'}</button>
+                    </div>
+                </div>
+            `;
+        }
+        async function startPreset(key) {
+            // 显示终端弹窗
+            showTerminal(`启动环境: ${key}`);
+            appendTerminal('$ docker-compose up -d ...', 'cmd');
+            appendTerminal('正在启动容器，请稍候...', 'info');
+
+            try {
+                const data = await api('/terminal/start-env', {
+                    method: 'POST',
+                    body: JSON.stringify({ preset: key })
+                });
+
+                if (data.output) {
+                    appendTerminal(data.output, data.success ? 'stdout' : 'stderr');
+                }
+
+                if (data.success) {
+                    appendTerminal('\n✅ 环境启动成功！', 'success');
+                    setTerminalStatus('完成', true);
+                    // 刷新
+                    setTimeout(() => {
+                        loadPresets();
+                        loadContainers();
+                    }, 1000);
+                } else {
+                    appendTerminal('\n❌ 启动失败: ' + (data.error || ''), 'error');
+                    setTerminalStatus('失败', false);
+                }
+            } catch (e) {
+                appendTerminal('❌ 请求失败: ' + e.message, 'error');
+                setTerminalStatus('错误', false);
+            }
+        }
+
+        async function stopAllContainers() {
+            showTerminal('停止所有容器');
+            appendTerminal('$ docker stop ...', 'cmd');
+            appendTerminal('正在停止容器...', 'info');
+
+            try {
+                const data = await api('/env/stop-all', { method: 'POST' });
+
+                if (data.data?.results) {
+                    for (const [name, status] of Object.entries(data.data.results)) {
+                        appendTerminal(`${name}: ${status}`, status === 'stopped' ? 'success' : 'stderr');
+                    }
+                }
+
+                appendTerminal('\n✅ 操作完成', 'success');
+                setTerminalStatus('完成', true);
+
+                setTimeout(() => {
+                    loadPresets();
+                    loadContainers();
+                }, 1000);
+            } catch (e) {
+                appendTerminal('❌ 操作失败: ' + e.message, 'error');
+                setTerminalStatus('错误', false);
+            }
+        }
+
+        // ============ 终端弹窗 ============
+        function showTerminal(title) {
+            document.getElementById('terminalModal').classList.add('active');
+            document.getElementById('terminalTitle').textContent = title;
+            document.getElementById('terminalOutput').innerHTML = '';
+            document.getElementById('terminalStatus').textContent = '执行中...';
+        }
+
+        function closeTerminalModal() {
+            document.getElementById('terminalModal').classList.remove('active');
+        }
+        document.getElementById('terminalModal').onclick = e => e.target.id === 'terminalModal' && closeTerminalModal();
+
+        function appendTerminal(text, type = 'stdout') {
+            const output = document.getElementById('terminalOutput');
+            const colors = {
+                'cmd': '#60a5fa',
+                'info': '#94a3b8',
+                'stdout': '#10b981',
+                'stderr': '#f87171',
+                'error': '#ef4444',
+                'success': '#22c55e',
+            };
+            const color = colors[type] || colors.stdout;
+            output.innerHTML += `<span style="color:${color}">${escapeHtml(text)}</span>\n`;
+            output.scrollTop = output.scrollHeight;
+        }
+
+        function setTerminalStatus(text, success) {
+            const el = document.getElementById('terminalStatus');
+            el.textContent = text;
+            el.style.color = success ? '#22c55e' : '#ef4444';
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function setText(id, value) {
+            const el = document.getElementById(id);
+            if (el) el.textContent = value;
+        }
+
+        function updateHeroStatus({ projects = null, containers = null, presets = null, config = null } = {}) {
+            if (projects !== null) setText('heroProjectCount', projects);
+            if (containers !== null) setText('heroRunningCount', containers);
+            if (presets !== null) setText('heroPresetCount', presets);
+            if (config !== null) setText('heroConfigState', config);
+
+            const running = document.getElementById('heroRunningCount')?.textContent || '-';
+            const projectCount = document.getElementById('heroProjectCount')?.textContent || '-';
+            if (running !== '-' || projectCount !== '-') {
+                setText('heroStatusTitle', '工作台已连接');
+                setText('heroStatusText', `当前读取到 ${projectCount} 个项目，${running} 个容器正在运行。`);
+            }
+        }
+
+        function projectInitial(project) {
+            const text = String(project.name || project.key || 'P').trim();
+            return text.slice(0, 2).toUpperCase();
+        }
+
+        function projectTypeLabel(type) {
+            const map = { hyperf: 'Hyperf', laravel: 'Laravel', 'php-fpm': 'PHP-FPM', static: 'Static' };
+            return map[type] || String(type || 'Project');
+        }
+
+        // ============ Project launcher ============
+        async function loadProjects() {
+            const list = document.getElementById('projectList');
+            if (!list) return;
+
+            try {
+                const data = await api('/projects');
+                const projects = data.projects || [];
+                updateHeroStatus({ projects: projects.length });
+
+                if (!projects.length) {
+                    list.innerHTML = `
+                        <div class="project-card">
+                            <div class="project-card-top">
+                                <div class="project-identity">
+                                    <div class="project-avatar">NEW</div>
+                                    <div>
+                                        <div class="project-name">还没有项目</div>
+                                        <div class="project-key">点击“新增项目”，把 Laravel / Hyperf / Go 项目接入面板。</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="project-path">面板只生成环境配置和管理卡片，不会修改你的项目源码。</div>
+                        </div>
+                    `;
+                    return;
+                }
+
+                list.innerHTML = projects.map(project => renderProjectCard(project)).join('');
+            } catch (e) {
+                updateHeroStatus({ projects: '异常' });
+                list.innerHTML = `<div class="project-card"><div style="color:var(--danger)">项目加载失败：${escapeHtml(e.message)}</div></div>`;
+            }
+        }
+
+        function renderProjectCard(project) {
+            const status = project.status || {};
+            const active = !!status.active;
+            const servicesRunning = Number(status.servicesRunning || 0);
+            const servicesTotal = Number(status.servicesTotal || (project.services || []).length || 0);
+            const servicesText = servicesTotal ? `${servicesRunning}/${servicesTotal}` : '未配置';
+            const url = project.url || (project.port ? `http://localhost:${project.port}` : '');
+            const runtimeText = project.type === 'hyperf' ? '专属容器 9501' : (project.php ? `PHP 服务：${project.php}` : 'workspace 备用');
+            const keyArg = jsArg(project.key || '');
+            const urlArg = jsArg(url);
+            const services = project.services || [];
+
+            return `
+                <div class="project-card ${active ? 'active' : ''}">
+                    <div class="project-card-top">
+                        <div class="project-identity">
+                            <div class="project-avatar">${escapeHtml(projectInitial(project))}</div>
+                            <div>
+                                <div class="project-name">${escapeHtml(project.name || project.key)}</div>
+                                <div class="project-key">${escapeHtml(project.key || '')}</div>
+                            </div>
+                        </div>
+                        <span class="status-badge ${active ? 'running' : 'stopped'}">${active ? '已就绪' : `服务 ${servicesText}`}</span>
+                    </div>
+                    <div class="project-path">${escapeHtml(project.path || '未填写项目路径')}</div>
+                    <div class="project-meta-grid">
+                        <div class="project-meta-tile"><span>项目类型</span><strong>${escapeHtml(projectTypeLabel(project.type))}</strong></div>
+                        <div class="project-meta-tile"><span>运行方式</span><strong>${escapeHtml(runtimeText)}</strong></div>
+                        <div class="project-meta-tile"><span>访问地址</span><strong>${escapeHtml(url || '未配置')}</strong></div>
+                        <div class="project-meta-tile"><span>端口</span><strong>${escapeHtml(project.port || '未配置')}</strong></div>
+                    </div>
+                    <div class="project-services">
+                        ${services.length ? services.map(service => `<span class="project-chip">${escapeHtml(service)}</span>`).join('') : '<span class="project-chip">未绑定服务</span>'}
+                    </div>
+                    <div class="project-actions">
+                        <div class="project-action-group">
+                            <span class="project-action-label">运行控制</span>
+                            <button class="btn btn-sm btn-success" onclick="startProject(${keyArg})">启动</button>
+                            ${project.type === 'hyperf' ? `<button class="btn btn-sm" style="background:#fee2e2;color:#991b1b" onclick="stopProject(${keyArg})">停止</button>` : ''}
+                            <button class="btn btn-sm" style="background:#fef3c7;color:#92400e" onclick="restartProject(${keyArg})">重启</button>
+                            ${url ? `<button class="btn btn-sm" style="background:#dbeafe;color:#1d4ed8" onclick="window.open(${urlArg},'_blank')">打开</button>` : ''}
+                        </div>
+                        <div class="project-action-group">
+                            <span class="project-action-label">常用命令</span>
+                            <button class="btn btn-sm" style="background:#eef2ff;color:#3730a3" onclick="runProjectCommand(${keyArg}, 'php-version')">PHP 版本</button>
+                            <button class="btn btn-sm" style="background:#f3f4f6;color:#374151" onclick="runProjectCommand(${keyArg}, 'composer-install')">Composer</button>
+                            ${project.type === 'hyperf' || project.type === 'laravel' ? `<button class="btn btn-sm" style="background:#ecfdf5;color:#065f46" onclick="runProjectCommand(${keyArg}, 'migrate')">迁移</button>` : ''}
+                            ${project.type === 'hyperf' ? `<button class="btn btn-sm" style="background:#fff7ed;color:#9a3412" onclick="runProjectCommand(${keyArg}, 'di-proxy')">DI 代理</button>` : ''}
+                            ${project.type === 'hyperf' ? `<button class="btn btn-sm" style="background:#e0e7ff;color:#3730a3" onclick="showProjectLogs(${keyArg})">日志</button>` : ''}
+                            <button class="btn btn-sm" style="background:#111827;color:white" onclick="runCustomProjectCommand(${keyArg})">运行命令</button>
+                        </div>
+                        <div class="project-action-group">
+                            <span class="project-action-label">配置维护</span>
+                            <button class="btn btn-sm" style="background:#f3f4f6;color:#374151" onclick="editProject(${keyArg})">编辑</button>
+                            <button class="btn btn-sm" style="background:#fee2e2;color:#991b1b" onclick="deleteProject(${keyArg}, ${jsArg(project.type || '')})">删除环境</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        function jsArg(value) {
+            return JSON.stringify(String(value))
+                .replace(/&/g, '&amp;')
+                .replace(/"/g, '&quot;')
+                .replace(/</g, '\\u003c');
+        }
+
+        function toggleProjectForm(forceOpen = null) {
+            const form = document.getElementById('projectForm');
+            const shouldOpen = forceOpen === null ? !form.classList.contains('active') : forceOpen;
+            form.classList.toggle('active', shouldOpen);
+            if (shouldOpen) {
+                renderProjectServiceOptions();
+                applyProjectModeVisibility();
+            }
+        }
+
+        function openNewProjectForm() {
+            const form = document.getElementById('projectForm');
+            if (form.classList.contains('active')) {
+                toggleProjectForm(false);
+                return;
+            }
+            clearProjectForm();
+            toggleProjectForm(true);
+            document.getElementById('projectKey')?.focus();
+        }
+
+        function safeServicePart(value) {
+            return String(value || 'project').trim().toLowerCase().replace(/[^a-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '') || 'project';
+        }
+
+        function projectHyperfServiceName() {
+            return `hyperf-${safeServicePart(document.getElementById('projectKey')?.value || 'project')}`;
+        }
+
+        function parseServiceText(value) {
+            return String(value || '').split(/[\s,]+/).map(item => item.trim()).filter(Boolean);
+        }
+
+        function uniqueList(items) {
+            return Array.from(new Set((items || []).filter(Boolean)));
+        }
+
+        function isWebProjectType(type = document.getElementById('projectType')?.value) {
+            return ['laravel', 'php-fpm', 'static'].includes(type);
+        }
+
+        function defaultProjectServices(type = document.getElementById('projectType').value) {
+            const php = document.getElementById('projectPhp')?.value || 'php83-fpm';
+            if (type === 'hyperf') return [projectHyperfServiceName(), 'redis'];
+            if (type === 'static') return ['nginx'];
+            return ['nginx', php, 'redis'];
+        }
+
+        function projectServiceChoices(type = document.getElementById('projectType').value) {
+            const php = document.getElementById('projectPhp')?.value || 'php83-fpm';
+            const choices = [
+                { value: 'nginx', label: 'Nginx' },
+                { value: 'redis', label: 'Redis' },
+                { value: 'php83-fpm', label: 'PHP 8.3' },
+                { value: 'php81-fpm', label: 'PHP 8.1' },
+                { value: 'php80-fpm', label: 'PHP 8.0' },
+                { value: 'php73-fpm', label: 'PHP 7.3' },
+                { value: 'php-fpm', label: '默认 PHP' },
+                { value: 'go', label: 'Go' },
+            ];
+
+            if (type === 'hyperf') {
+                return [
+                    { value: projectHyperfServiceName(), label: 'Hyperf 专属容器' },
+                    { value: 'redis', label: 'Redis' },
+                ];
+            }
+            if (type === 'static') {
+                return [{ value: 'nginx', label: 'Nginx' }];
+            }
+
+            return choices.map(choice => choice.value === php ? { ...choice, label: `${choice.label}（当前）` } : choice);
+        }
+
+        function setProjectServices(services, render = true) {
+            const next = uniqueList(services);
+            document.getElementById('projectServices').value = next.join(',');
+            if (render) renderProjectServiceOptions(next);
+        }
+
+        function selectedProjectServices() {
+            const checked = Array.from(document.querySelectorAll('#projectServiceOptions input:checked')).map(item => item.value);
+            const typed = parseServiceText(document.getElementById('projectServices').value);
+            return uniqueList([...checked, ...typed]);
+        }
+
+        function renderProjectServiceOptions(selected = null) {
+            const box = document.getElementById('projectServiceOptions');
+            if (!box) return;
+            const type = document.getElementById('projectType').value;
+            const selectedValues = selected === null ? parseServiceText(document.getElementById('projectServices').value) : selected;
+            const selectedSet = new Set(selectedValues.length ? selectedValues : defaultProjectServices(type));
+            box.innerHTML = projectServiceChoices(type).map(choice => `
+                <label class="checkbox-chip">
+                    <input type="checkbox" value="${escapeHtml(choice.value)}" ${selectedSet.has(choice.value) ? 'checked' : ''} onchange="updateProjectServicesFromOptions()">
+                    <span>${escapeHtml(choice.label)}</span>
+                </label>
+            `).join('');
+            updateProjectServicesFromOptions(false);
+        }
+
+        function updateProjectServicesFromOptions(updateText = true) {
+            if (!updateText) return;
+            const checked = Array.from(document.querySelectorAll('#projectServiceOptions input:checked')).map(item => item.value);
+            const typed = parseServiceText(document.getElementById('projectServices').value);
+            const known = new Set(projectServiceChoices().map(item => item.value));
+            const custom = typed.filter(item => !known.has(item));
+            document.getElementById('projectServices').value = uniqueList([...checked, ...custom]).join(',');
+        }
+
+        function syncProjectServiceChecksFromText() {
+            const selected = new Set(parseServiceText(document.getElementById('projectServices').value));
+            document.querySelectorAll('#projectServiceOptions input').forEach(input => {
+                input.checked = selected.has(input.value);
+            });
+        }
+
+        function handleProjectKeyInput() {
+            const key = document.getElementById('projectKey').value.trim();
+            const name = document.getElementById('projectName');
+            if (!name.value.trim()) name.value = key;
+
+            if (document.getElementById('projectType').value !== 'hyperf') return;
+            const current = parseServiceText(document.getElementById('projectServices').value);
+            const hasOnlyDefault = current.length === 0 || current.every(item => item === 'redis' || item.startsWith('hyperf-'));
+            if (hasOnlyDefault) setProjectServices(defaultProjectServices('hyperf'));
+            else renderProjectServiceOptions(current);
+        }
+
+        function handleProjectPhpChange() {
+            const type = document.getElementById('projectType').value;
+            if (type === 'laravel' || type === 'php-fpm') {
+                const current = parseServiceText(document.getElementById('projectServices').value);
+                const withoutPhp = current.filter(item => !/^php(73|80|81|83)?-fpm$/.test(item));
+                setProjectServices(uniqueList([...withoutPhp, document.getElementById('projectPhp').value]));
+            } else {
+                renderProjectServiceOptions();
+            }
+        }
+
+        function applyProjectCommandPreset() {
+            const value = document.getElementById('projectCommandPreset').value;
+            if (value) document.getElementById('projectCommand').value = value;
+        }
+
+        function applyProjectLogPreset() {
+            const value = document.getElementById('projectLogPreset').value;
+            if (value) document.getElementById('projectLog').value = value;
+        }
+
+        function applyProjectModeVisibility() {
+            const mode = document.getElementById('projectMode').value;
+            const type = document.getElementById('projectType').value;
+            const showWebOptions = mode === 'scaffold' && isWebProjectType(type);
+            const webOptions = document.getElementById('projectWebOptions');
+            const previewBtn = document.getElementById('projectPreviewBtn');
+            const saveBtn = document.getElementById('projectSaveBtn');
+            const hint = document.getElementById('projectModeHint');
+            const root = document.getElementById('projectRoot');
+            const serverName = document.getElementById('projectServerName');
+            const force = document.getElementById('projectForce');
+
+            if (webOptions) webOptions.style.display = showWebOptions ? 'flex' : 'none';
+            if (previewBtn) previewBtn.style.display = mode === 'scaffold' ? 'inline-block' : 'none';
+            if (saveBtn) saveBtn.textContent = mode === 'scaffold' ? '生成并保存' : '保存卡片';
+            if (root) {
+                root.disabled = !showWebOptions;
+                root.placeholder = type === 'static'
+                    ? '静态站点根目录，留空则使用项目路径'
+                    : '站点根目录，留空则使用项目路径/public';
+            }
+            if (serverName) serverName.disabled = !showWebOptions;
+            if (force) force.disabled = !showWebOptions;
+
+            if (!hint) return;
+            if (mode === 'card') {
+                hint.textContent = '仅保存面板管理卡片，不生成 Nginx 或 docker-compose 配置；适合环境已经手动配置好的项目。';
+            } else if (type === 'hyperf') {
+                hint.textContent = '完整接入会生成项目卡片和 Hyperf 专属 docker-compose 服务，端口映射到容器内 9501；不会修改项目源码。';
+            } else {
+                hint.textContent = '完整接入会生成项目卡片、Nginx 站点配置和端口映射；不会修改项目源码。';
+            }
+        }
+
+        function applyProjectTypeDefaults(reset = false) {
+            const type = document.getElementById('projectType').value;
+            const php = document.getElementById('projectPhp');
+            const hasServices = parseServiceText(document.getElementById('projectServices').value).length > 0;
+            php.disabled = type === 'static';
+
+            if (type === 'hyperf') {
+                if (reset || !document.getElementById('projectPort').value) document.getElementById('projectPort').value = '9502';
+                if (reset || !document.getElementById('projectCommand').value) document.getElementById('projectCommand').value = 'php bin/hyperf.php start';
+                if (reset || !document.getElementById('projectLog').value) document.getElementById('projectLog').value = 'runtime/logs/hyperf.log';
+                if (reset || !hasServices) setProjectServices(defaultProjectServices('hyperf'));
+                else renderProjectServiceOptions(parseServiceText(document.getElementById('projectServices').value));
+            } else if (type === 'laravel' || type === 'php-fpm') {
+                if (reset || !document.getElementById('projectPort').value) document.getElementById('projectPort').value = '8002';
+                if (reset) document.getElementById('projectCommand').value = '';
+                if (reset) document.getElementById('projectLog').value = type === 'laravel' ? 'storage/logs/laravel.log' : '';
+                if (reset || !hasServices) setProjectServices(defaultProjectServices(type));
+                else renderProjectServiceOptions(parseServiceText(document.getElementById('projectServices').value));
+            } else {
+                if (reset || !document.getElementById('projectPort').value) document.getElementById('projectPort').value = '8002';
+                if (reset) document.getElementById('projectCommand').value = '';
+                if (reset) document.getElementById('projectLog').value = '';
+                if (reset || !hasServices) setProjectServices(defaultProjectServices('static'));
+                else renderProjectServiceOptions(parseServiceText(document.getElementById('projectServices').value));
+            }
+
+            if (reset) {
+                document.getElementById('projectRoot').value = '';
+                document.getElementById('projectServerName').value = 'localhost';
+                document.getElementById('projectForce').checked = false;
+            }
+            updateProjectUrl(true);
+            applyProjectModeVisibility();
+        }
+
+        function updateProjectUrl(force = false) {
+            const port = document.getElementById('projectPort').value;
+            const url = document.getElementById('projectUrl');
+            if (port && (force || !url.value)) url.value = `http://localhost:${port}`;
+        }
+
+        document.getElementById('projectPort')?.addEventListener('input', () => updateProjectUrl(true));
+
+        function readProjectForm() {
+            const key = document.getElementById('projectKey').value.trim();
+            return {
+                mode: document.getElementById('projectMode').value,
+                key,
+                name: document.getElementById('projectName').value.trim() || key,
+                type: document.getElementById('projectType').value,
+                path: document.getElementById('projectPath').value.trim(),
+                port: parseInt(document.getElementById('projectPort').value || '0', 10),
+                php: document.getElementById('projectPhp').value,
+                services: selectedProjectServices(),
+                command: document.getElementById('projectCommand').value.trim(),
+                log: document.getElementById('projectLog').value.trim(),
+                url: document.getElementById('projectUrl').value.trim(),
+                root: document.getElementById('projectRoot').value.trim(),
+                serverName: document.getElementById('projectServerName').value.trim() || 'localhost',
+                force: document.getElementById('projectForce').checked,
+            };
+        }
+
+        function validateProjectForm(project) {
+            if (!project.key || !project.path) {
+                alert('请填写项目标识和项目路径。');
+                return false;
+            }
+            if (project.port && (project.port < 1024 || project.port > 65535)) {
+                alert('端口需要在 1024 到 65535 之间。');
+                return false;
+            }
+            return true;
+        }
+
+        function projectScaffoldPayload(project, dryRun = false) {
+            return {
+                type: project.type,
+                key: project.key,
+                name: project.name || project.key,
+                path: project.path,
+                port: project.port || 0,
+                php: project.php || 'php83-fpm',
+                services: project.services || [],
+                command: project.command || '',
+                log: project.log || '',
+                url: project.url || (project.port ? `http://localhost:${project.port}` : ''),
+                root: project.root || '',
+                serverName: project.serverName || 'localhost',
+                force: project.type === 'hyperf' ? true : !!project.force,
+                dryRun,
+            };
+        }
+
+        async function scaffoldProjectEnvironment(project, dryRun = false) {
+            return api('/project-scaffold', {
+                method: 'POST',
+                body: JSON.stringify(projectScaffoldPayload(project, dryRun)),
+            });
+        }
+
+        function hyperfScaffoldPayload(project, dryRun = false) {
+            return projectScaffoldPayload({ ...project, type: 'hyperf', force: true }, dryRun);
+        }
+
+        async function scaffoldHyperfProject(project, dryRun = false) {
+            return api('/project-scaffold', {
+                method: 'POST',
+                body: JSON.stringify(hyperfScaffoldPayload(project, dryRun)),
+            });
+        }
+
+        function printScaffoldResult(result, dryRun) {
+            appendTerminal('\n将执行的操作:', 'info');
+            (result.actions || []).forEach(item => appendTerminal('- ' + item, 'stdout'));
+            if (result.site) appendTerminal(`\nNginx: ${result.site.file} -> ${result.site.root}`, 'stdout');
+            if (result.compose) appendTerminal(`\nCompose: ${result.compose.service} ${result.compose.hostPort}:${result.compose.containerPort}`, 'stdout');
+            appendTerminal('\n下一步建议:', 'info');
+            (result.nextSteps || []).forEach(item => appendTerminal(item, 'cmd'));
+            appendTerminal(dryRun ? '\n预览完成，没有写入文件。' : '\n配置已生成，项目源码未被修改。', 'success');
+            setTerminalStatus('完成', true);
+        }
+
+        async function previewProjectConfig() {
+            const project = readProjectForm();
+            if (!validateProjectForm(project)) return;
+            if (project.mode !== 'scaffold') {
+                alert('只有“完整接入环境”模式需要预览配置。');
+                return;
+            }
+
+            showTerminal('预览新增项目：' + project.key);
+            appendTerminal('$ project preview ' + project.type + ' ' + project.key, 'cmd');
+            appendTerminal('只预览将写入的环境配置，不会修改任何文件。', 'info');
+
+            try {
+                const data = await scaffoldProjectEnvironment(project, true);
+                if (!data.success) {
+                    appendTerminal(data.error || '预览失败', 'error');
+                    setTerminalStatus('失败', false);
+                    return;
+                }
+                printScaffoldResult(data.data || {}, true);
+            } catch (e) {
+                appendTerminal(e.message, 'error');
+                setTerminalStatus('错误', false);
+            }
+        }
+
+        async function saveProject() {
+            const project = readProjectForm();
+            if (!validateProjectForm(project)) return;
+
+            try {
+                let data;
+                if (project.mode === 'scaffold') {
+                    showTerminal('生成项目环境：' + project.key);
+                    appendTerminal('$ project scaffold ' + project.type + ' ' + project.key, 'cmd');
+                    appendTerminal('正在写入面板、Nginx 或 docker-compose 环境配置；不会修改项目源码。', 'info');
+                    data = await scaffoldProjectEnvironment(project, false);
+                    if (!data.success) {
+                        appendTerminal(data.error || '保存失败', 'error');
+                        setTerminalStatus('失败', false);
+                        return;
+                    }
+                    printScaffoldResult(data.data || {}, false);
+                    if (document.getElementById('siteModal')?.classList.contains('active')) loadSites();
+                } else {
+                    data = await api('/projects', {
+                        method: 'POST',
+                        body: JSON.stringify(project),
+                    });
+                    if (!data.success) {
+                        alert(data.error || '保存失败');
+                        return;
+                    }
+                }
+
+                clearProjectForm();
+                toggleProjectForm(false);
+                loadProjects();
+            } catch (e) {
+                if (project.mode === 'scaffold') {
+                    appendTerminal(e.message, 'error');
+                    setTerminalStatus('错误', false);
+                } else {
+                    alert(e.message || '保存失败');
+                }
+            }
+        }
+
+        function clearProjectForm() {
+            ['projectKey', 'projectName', 'projectPath', 'projectPort', 'projectServices', 'projectCommand', 'projectLog', 'projectUrl', 'projectRoot'].forEach(id => {
+                document.getElementById(id).value = '';
+            });
+            document.getElementById('projectMode').value = 'scaffold';
+            document.getElementById('projectType').value = 'hyperf';
+            document.getElementById('projectPhp').value = 'php83-fpm';
+            document.getElementById('projectServerName').value = 'localhost';
+            document.getElementById('projectForce').checked = false;
+            document.getElementById('projectCommandPreset').value = '';
+            document.getElementById('projectLogPreset').value = '';
+            applyProjectTypeDefaults(true);
+        }
+
+        async function editProject(key) {
+            const data = await api('/projects');
+            const project = (data.projects || []).find(item => item.key === key);
+            if (!project) return;
+
+            document.getElementById('projectMode').value = 'card';
+            document.getElementById('projectKey').value = project.key || '';
+            document.getElementById('projectName').value = project.name || '';
+            document.getElementById('projectType').value = project.type || 'hyperf';
+            document.getElementById('projectPhp').value = project.php || 'php83-fpm';
+            document.getElementById('projectPath').value = project.path || '';
+            document.getElementById('projectPort').value = project.port || '';
+            document.getElementById('projectCommand').value = project.command || '';
+            document.getElementById('projectLog').value = project.log || '';
+            document.getElementById('projectUrl').value = project.url || '';
+            document.getElementById('projectRoot').value = '';
+            document.getElementById('projectServerName').value = 'localhost';
+            document.getElementById('projectForce').checked = false;
+            document.getElementById('projectCommandPreset').value = '';
+            document.getElementById('projectLogPreset').value = '';
+            document.getElementById('projectPhp').disabled = (project.type || '') === 'static';
+            setProjectServices(project.services || defaultProjectServices(project.type || 'hyperf'));
+            applyProjectModeVisibility();
+            toggleProjectForm(true);
+        }
+
+        async function deleteProject(key, type) {
+            try {
+                const data = await api('/projects');
+                const project = (data.projects || []).find(item => item.key === key) || { key, type };
+                openProjectDeleteModal(project);
+            } catch (e) {
+                alert('项目加载失败：' + e.message);
+            }
+        }
+
+        function openProjectDeleteModal(project) {
+            pendingProjectDelete = project;
+            const isHyperf = project.type === 'hyperf';
+            const isWeb = project.type === 'laravel' || project.type === 'php-fpm' || project.type === 'static';
+
+            document.getElementById('deleteProjectName').textContent = project.name || project.key || '';
+            document.getElementById('deleteProjectKey').textContent = project.key || '';
+            document.getElementById('deleteProjectType').textContent = (project.type || 'project').toUpperCase();
+            document.getElementById('deleteProjectPath').textContent = project.path || '';
+            document.getElementById('deleteRemoveContainer').checked = isHyperf;
+            document.getElementById('deleteRemoveCompose').checked = isHyperf;
+            document.getElementById('deleteRemoveSite').checked = false;
+            document.getElementById('deleteRemovePort').checked = false;
+            document.getElementById('deleteDedicatedOptions').style.display = isHyperf ? 'block' : 'none';
+            document.getElementById('deleteWebOptions').style.display = isWeb ? 'block' : 'none';
+            document.getElementById('projectDeleteModal').classList.add('active');
+        }
+
+        function closeProjectDeleteModal() {
+            document.getElementById('projectDeleteModal').classList.remove('active');
+            pendingProjectDelete = null;
+        }
+
+        async function confirmProjectDelete() {
+            const project = pendingProjectDelete;
+            if (!project || !project.key) return;
+
+            const payload = {
+                removeContainer: document.getElementById('deleteRemoveContainer').checked,
+                removeCompose: document.getElementById('deleteRemoveCompose').checked,
+                removeSite: document.getElementById('deleteRemoveSite').checked,
+                removeNginxPort: document.getElementById('deleteRemovePort').checked,
+            };
+
+            const isHyperf = project.type === 'hyperf';
+            if (!isHyperf) {
+                payload.removeContainer = false;
+                payload.removeCompose = false;
+            }
+
+            closeProjectDeleteModal();
+            showTerminal('删除项目环境：' + project.key);
+            appendTerminal('$ project delete-environment ' + project.key, 'cmd');
+            appendTerminal('此操作不会删除项目源码。', 'info');
+
+            try {
+                const data = await api('/projects/' + encodeURIComponent(project.key) + '/delete-environment', {
+                    method: 'POST',
+                    body: JSON.stringify(payload),
+                });
+
+                if (!data.success) {
+                    appendTerminal(data.error || '删除失败', 'error');
+                    setTerminalStatus('失败', false);
+                    return;
+                }
+
+                const result = data.data || {};
+                (result.actions || []).forEach(item => appendTerminal('[操作] ' + item, 'stdout'));
+                (result.warnings || []).forEach(item => appendTerminal('[警告] ' + item, 'stderr'));
+                if (result.output) appendTerminal(result.output, 'stdout');
+
+                appendTerminal('环境清理完成，项目源码未被修改。', 'success');
+                setTerminalStatus('完成', true);
+                loadProjects();
+                setTimeout(loadContainers, 800);
+            } catch (e) {
+                appendTerminal(e.message, 'error');
+                appendTerminal('如果接口不存在，请重启 docker-panel 让新的控制器加载。', 'info');
+                setTerminalStatus('错误', false);
+            }
+        }
+
+        function isMissingComposeServiceError(message) {
+            return /no such service/i.test(String(message || ''));
+        }
+
+        async function repairHyperfEnvironment(key) {
+            const data = await api('/projects');
+            const project = (data.projects || []).find(item => item.key === key);
+            if (!project || project.type !== 'hyperf') return false;
+
+            appendTerminal('检测到 Hyperf compose 服务缺失，正在重新生成环境配置...', 'info');
+            const result = await scaffoldHyperfProject(project, false);
+            const payload = result.data || {};
+            (payload.actions || []).forEach(item => appendTerminal('- ' + item, 'stdout'));
+            (payload.nextSteps || []).forEach(item => appendTerminal(item, 'cmd'));
+            appendTerminal('环境配置已修复，正在重新尝试启动...', 'success');
+            return true;
+        }
+
+        async function runProjectAction(key, action, retried = false) {
+            const actionNames = { start: '启动', stop: '停止', restart: '重启' };
+            showTerminal(`${actionNames[action] || action}项目：${key}`);
+            appendTerminal(`$ project ${action} ${key}`, 'cmd');
+            appendTerminal('正在执行，请稍候...', 'info');
+            if (action === 'start') {
+                appendTerminal('如果项目镜像尚未构建，请先执行对应服务的 docker-compose build。', 'info');
+            }
+
+            try {
+                const data = await api(`/projects/${key}/${action}`, { method: 'POST' });
+                if (data.data?.output) appendTerminal(data.data.output, data.success ? 'stdout' : 'stderr');
+                if (data.success) {
+                    appendTerminal('\n完成', 'success');
+                    setTerminalStatus('完成', true);
+                    setTimeout(refreshDashboard, 1000);
+                    return;
+                }
+
+                const message = data.error || '操作失败';
+                if (action === 'start' && !retried && isMissingComposeServiceError(message)) {
+                    if (await repairHyperfEnvironment(key)) {
+                        return runProjectAction(key, action, true);
+                    }
+                }
+
+                appendTerminal(message, 'error');
+                setTerminalStatus('失败', false);
+            } catch (e) {
+                const message = e.message || '操作失败';
+                if (action === 'start' && !retried && isMissingComposeServiceError(message)) {
+                    try {
+                        if (await repairHyperfEnvironment(key)) {
+                            return runProjectAction(key, action, true);
+                        }
+                    } catch (repairError) {
+                        appendTerminal(repairError.message || String(repairError), 'error');
+                    }
+                }
+
+                appendTerminal(message, 'error');
+                setTerminalStatus('错误', false);
+            }
+        }
+        const startProject = key => runProjectAction(key, 'start');
+        const stopProject = key => runProjectAction(key, 'stop');
+        const restartProject = key => runProjectAction(key, 'restart');
+
+        async function runProjectCommand(key, command, custom = '') {
+            showTerminal(`${command} · ${key}`);
+            appendTerminal(`$ ${custom || command}`, 'cmd');
+            appendTerminal('正在项目容器中执行...', 'info');
+
+            try {
+                const data = await api(`/projects/${key}/run`, {
+                    method: 'POST',
+                    body: JSON.stringify({ command, custom })
+                });
+
+                if (data.data?.output) appendTerminal(data.data.output, data.success ? 'stdout' : 'stderr');
+                if (data.success) {
+                    appendTerminal('\n完成', 'success');
+                    setTerminalStatus('完成', true);
+                } else {
+                    appendTerminal(data.error || '执行失败', 'error');
+                    setTerminalStatus('失败', false);
+                }
+            } catch (e) {
+                appendTerminal(e.message, 'error');
+                setTerminalStatus('错误', false);
+            }
+        }
+
+        function runCustomProjectCommand(key) {
+            const command = prompt('Command to run in this project directory:');
+            if (!command) return;
+            runProjectCommand(key, 'custom', command);
+        }
+
+        async function showProjectLogs(key) {
+            showTerminal(`logs: ${key}`);
+            try {
+                const data = await api(`/projects/${key}/logs`);
+                appendTerminal(data.logs || 'No logs', 'stdout');
+                setTerminalStatus('完成', true);
+            } catch (e) {
+                appendTerminal(e.message, 'error');
+                setTerminalStatus('错误', false);
+            }
+        }
+
+        // ============ 站点管理 ============
+        let cachedSites = [];
+        let cachedSitePorts = [];
+        let cachedSitePhpVersions = {};
+
+        async function showSitePanel() {
+            document.getElementById('siteModal').classList.add('active');
+            toggleAccessType();
+            await loadSites();
+        }
+
+        function closeSiteModal() {
+            document.getElementById('siteModal').classList.remove('active');
+        }
+        document.getElementById('siteModal').onclick = e => e.target.id === 'siteModal' && closeSiteModal();
+
+        async function loadSites() {
+            try {
+                const data = await api('/sites');
+                cachedSites = data.sites || [];
+                cachedSitePorts = (data.exposedPorts || []).map(Number);
+                cachedSitePhpVersions = data.phpVersions || {};
+                renderSites();
+                updateAccessPreview();
+            } catch (e) {
+                document.getElementById('siteList').innerHTML = '<div class="site-empty" style="color:var(--danger)">加载失败：' + escapeHtml(e.message) + '</div>';
+            }
+        }
+
+        function renderSites() {
+            const list = document.getElementById('siteList');
+            if (!list) return;
+            const query = (document.getElementById('siteSearch')?.value || '').trim().toLowerCase();
+            const sites = cachedSites.filter(site => {
+                const haystack = [site.filename, site.serverName, site.root, site.phpVersion, site.port].join(' ').toLowerCase();
+                return !query || haystack.includes(query);
+            });
+
+            const portSites = cachedSites.filter(site => Number(site.port || 80) !== 80).length;
+            const domainSites = cachedSites.length - portSites;
+            document.getElementById('siteTotalCount').textContent = cachedSites.length;
+            document.getElementById('sitePortCount').textContent = portSites;
+            document.getElementById('siteDomainCount').textContent = domainSites;
+            document.getElementById('siteSummary').textContent = cachedSites.length ? `共 ${cachedSites.length} 个站点，${portSites} 个端口访问，${domainSites} 个域名访问。` : '还没有站点配置。';
+            document.getElementById('siteExposedPorts').textContent = '已暴露端口：' + (cachedSitePorts.length ? cachedSitePorts.join(', ') : '未知');
+
+            if (!sites.length) {
+                list.innerHTML = '<div class="site-empty">没有匹配的站点。可以从左侧创建一个新的本地站点。</div>';
+                return;
+            }
+
+            list.innerHTML = `<div class="site-card-grid">${sites.map(renderSiteCard).join('')}</div>`;
+        }
+
+        function renderSiteCard(site) {
+            const port = Number(site.port || 80);
+            const isPort = port !== 80;
+            const url = isPort ? `http://localhost:${port}` : `http://${site.serverName || 'localhost'}`;
+            const exposed = !isPort || cachedSitePorts.includes(port);
+            const phpLabel = phpSiteLabel(site.phpVersion);
+            const typeClass = isPort ? 'port' : 'domain';
+            const hostsButton = (!isPort && site.serverName && site.serverName !== 'localhost')
+                ? `<button class="btn btn-sm" style="background:#dbeafe;color:#1d4ed8" onclick="copyHostsCommand(${jsArg(site.serverName)})">复制 hosts</button>`
+                : '';
+            const openButton = `<button class="btn btn-sm btn-success" onclick="window.open(${jsArg(url)}, '_blank')">打开</button>`;
+            const configPath = 'services/nginx/sites/' + site.filename;
+
+            return `
+                <div class="site-card ${typeClass}">
+                    <div class="site-card-head">
+                        <div>
+                            <div class="site-card-title">${escapeHtml(site.filename)}</div>
+                            <a class="site-card-url" href="${escapeHtml(url)}" target="_blank">${escapeHtml(url)}</a>
+                        </div>
+                        <span class="site-badge ${site.enabled ? 'ok' : 'warn'}">${site.enabled ? '启用' : '未启用'}</span>
+                    </div>
+                    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+                        <span class="site-badge ${isPort ? 'info' : 'ok'}">${isPort ? '端口访问' : '域名访问'}</span>
+                        <span class="site-badge ${exposed ? 'ok' : 'warn'}">${isPort ? (exposed ? '端口已暴露' : '需重启暴露端口') : '需要 hosts'}</span>
+                        <span class="site-badge gray">${escapeHtml(phpLabel)}</span>
+                    </div>
+                    <div class="site-meta">
+                        <div><strong>根目录：</strong>${escapeHtml(site.root || '-')}</div>
+                        <div><strong>server_name：</strong>${escapeHtml(site.serverName || '-')}</div>
+                        <div><strong>配置路径：</strong>${escapeHtml(configPath)}</div>
+                    </div>
+                    <div class="site-card-actions">
+                        ${openButton}
+                        ${hostsButton}
+                        <button class="btn btn-sm" style="background:var(--gray-100);color:var(--gray-700)" onclick="openSiteConfig(${jsArg(configPath)})">编辑配置</button>
+                        <button class="btn btn-sm" style="background:#fef3c7;color:#92400e" onclick="reloadNginx()">重载</button>
+                        <button class="btn btn-sm" style="background:#fee2e2;color:#991b1b" onclick="deleteSite(${jsArg(site.filename)})">删除</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function phpSiteLabel(service) {
+            return cachedSitePhpVersions?.[service]?.name || service || '静态站点';
+        }
+
+        function toggleAccessType() {
+            const usePort = document.getElementById('siteAccessType').value === 'port';
+            document.getElementById('portInputDiv').style.display = usePort ? 'flex' : 'none';
+            document.getElementById('domainInputDiv').style.display = usePort ? 'none' : 'flex';
+            document.getElementById('siteModeBadge').textContent = usePort ? '端口访问' : '域名访问';
+            document.getElementById('siteModeBadge').className = 'site-badge ' + (usePort ? 'info' : 'ok');
+            updateAccessPreview();
+        }
+
+        function applySiteTypeDefaults() {
+            const type = document.getElementById('siteProjectType').value;
+            const php = document.getElementById('sitePhpVersion');
+            const rootHint = document.getElementById('siteRootHint');
+            php.disabled = type === 'static';
+            if (type === 'static') {
+                rootHint.textContent = '静态站点通常填写项目目录本身，例如 /develop/docs。';
+            } else if (type === 'php') {
+                rootHint.textContent = '普通 PHP 站点填写入口所在目录。';
+            } else {
+                rootHint.textContent = 'Laravel 通常填写项目 public 目录，例如 /develop/demo/public。';
+            }
+            updateAccessPreview();
+        }
+
+        function syncSiteNameHints() {
+            const name = document.getElementById('siteName').value.trim();
+            const domain = document.getElementById('siteServerName');
+            if (name && (!domain.value || domain.value === 'myproject.test')) {
+                domain.value = `${name}.test`;
+            }
+            updateAccessPreview();
+        }
+
+        function updateAccessPreview() {
+            const usePort = document.getElementById('siteAccessType').value === 'port';
+            const port = Number(document.getElementById('sitePort').value || '8080');
+            const domain = document.getElementById('siteServerName').value || 'myproject.test';
+            const root = document.getElementById('siteRoot').value.trim();
+            const url = usePort ? `http://localhost:${port}` : `http://${domain}`;
+            const exposed = cachedSitePorts.includes(port);
+            const validPort = port >= 1024 && port <= 65535;
+            const preview = document.getElementById('accessPreview');
+            const next = document.getElementById('siteNextStep');
+            const hint = document.getElementById('sitePortHint');
+
+            preview.textContent = url;
+            if (usePort) {
+                hint.textContent = validPort ? (exposed ? '该端口已经暴露，创建后重载 Nginx 即可。' : '该端口尚未暴露，创建时会尝试写入 docker-compose.yml，之后需要重启 Nginx 容器。') : '端口需要在 1024 到 65535 之间。';
+                next.textContent = validPort ? (exposed ? '创建后点击“重载 Nginx”即可访问。' : '创建后点击“重启 Nginx”让新端口映射生效。') : '请先填写合法端口。';
+            } else {
+                next.textContent = '创建后复制 hosts 命令，并以管理员身份写入 Windows hosts。';
+            }
+            if (!root) next.textContent += ' 记得填写站点根目录。';
+        }
+
+        document.getElementById('sitePort')?.addEventListener('input', updateAccessPreview);
+        document.getElementById('siteServerName')?.addEventListener('input', updateAccessPreview);
+        document.getElementById('siteRoot')?.addEventListener('input', updateAccessPreview);
+
+        async function createSite() {
+            const name = document.getElementById('siteName').value.trim();
+            const root = document.getElementById('siteRoot').value.trim();
+            const type = document.getElementById('siteProjectType').value === 'static' ? 'static' : 'laravel';
+            const phpVersion = document.getElementById('sitePhpVersion').value;
+            const usePort = document.getElementById('siteAccessType').value === 'port';
+            const port = Number(document.getElementById('sitePort').value || '8080');
+            const serverName = document.getElementById('siteServerName').value.trim() || `${name || 'site'}.test`;
+
+            if (!name || !root) {
+                alert('请填写配置名称和根目录。');
+                return;
+            }
+            if (usePort && (port < 1024 || port > 65535)) {
+                alert('端口需要在 1024 到 65535 之间。');
+                return;
+            }
+
+            showTerminal('创建 Nginx 站点');
+            appendTerminal('$ site create ' + name, 'cmd');
+            appendTerminal('只写入 Nginx 站点配置，不会修改项目源码。', 'info');
+
+            try {
+                const data = await api('/sites', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        name,
+                        serverName: usePort ? 'localhost' : serverName,
+                        root,
+                        phpVersion,
+                        type,
+                        usePort,
+                        port,
+                    }),
+                });
+
+                if (!data.success) {
+                    appendTerminal(data.error || '创建失败', 'error');
+                    setTerminalStatus('失败', false);
+                    return;
+                }
+
+                const result = data.data || {};
+                const accessUrl = result.accessUrl || (usePort ? `http://localhost:${port}` : `http://${serverName}`);
+                appendTerminal('站点配置已创建：' + (result.filename || `${name}.conf`), 'success');
+                appendTerminal('访问地址：' + accessUrl, 'stdout');
+                if (usePort && result.needRestartNginx) {
+                    appendTerminal('端口映射已写入 docker-compose.yml，需要重启 Nginx 容器。', 'info');
+                } else if (usePort) {
+                    appendTerminal('端口已可用，重载 Nginx 后生效。', 'info');
+                } else {
+                    appendTerminal('需要写入 hosts：127.0.0.1 ' + serverName, 'info');
+                }
+                setTerminalStatus('完成', true);
+                clearSiteForm(false);
+                await loadSites();
+            } catch (e) {
+                appendTerminal(e.message, 'error');
+                setTerminalStatus('错误', false);
+            }
+        }
+
+        function clearSiteForm(resetName = true) {
+            if (resetName) document.getElementById('siteName').value = '';
+            document.getElementById('siteRoot').value = '';
+            updateAccessPreview();
+        }
+
+        async function deleteSite(filename) {
+            if (!confirm(`确定要删除站点配置 "${filename}" 吗？\n\n后端会先备份配置文件，不会删除项目源码。`)) return;
+
+            try {
+                const data = await api('/sites/' + encodeURIComponent(filename), { method: 'DELETE' });
+                if (data.success) {
+                    showTerminal('删除 Nginx 站点');
+                    appendTerminal('$ site delete ' + filename, 'cmd');
+                    appendTerminal('站点配置已删除，项目源码未被修改。', 'success');
+                    appendTerminal('请点击“重载 Nginx”使删除生效。', 'info');
+                    setTerminalStatus('完成', true);
+                    loadSites();
+                } else {
+                    alert('删除失败: ' + (data.error || '未知错误'));
+                }
+            } catch (e) {
+                alert('删除失败: ' + e.message);
+            }
+        }
+
+        async function reloadNginx() {
+            showTerminal('重载 Nginx');
+            appendTerminal('$ docker exec docker-develop-nginx-1 nginx -t', 'cmd');
+            appendTerminal('$ docker exec docker-develop-nginx-1 nginx -s reload', 'cmd');
+            appendTerminal('正在验证并重载 Nginx...', 'info');
+            try {
+                const data = await api('/sites/reload-nginx', { method: 'POST' });
+                if (data.success) {
+                    appendTerminal('Nginx 配置已重新加载。', 'success');
+                    setTerminalStatus('完成', true);
+                    loadSites();
+                } else {
+                    appendTerminal(data.error || '重载失败', 'error');
+                    setTerminalStatus('失败', false);
+                }
+            } catch (e) {
+                appendTerminal(e.message, 'error');
+                setTerminalStatus('错误', false);
+            }
+        }
+
+        async function restartNginxContainer() {
+            if (!confirm('确定要重启 Nginx 容器吗？\n\n这通常用于新增端口映射后让端口生效。')) return;
+
+            showTerminal('重启 Nginx 容器');
+            appendTerminal('$ docker-compose up -d nginx', 'cmd');
+            appendTerminal('正在重启 Nginx 容器...', 'info');
+
+            try {
+                const data = await api('/sites/restart-nginx', { method: 'POST' });
+                if (data.success) {
+                    appendTerminal(data.data?.output || 'Nginx 容器重启成功', 'stdout');
+                    appendTerminal('\nNginx 容器已重启', 'success');
+                    setTerminalStatus('完成', true);
+                    loadSites();
+                } else {
+                    appendTerminal('重启失败: ' + (data.error || ''), 'error');
+                    setTerminalStatus('失败', false);
+                }
+            } catch (e) {
+                appendTerminal('请求失败: ' + e.message, 'error');
+                setTerminalStatus('错误', false);
+            }
+        }
+
+        function copyHostsCommand(value) {
+            const domain = typeof value === 'string' ? value : value.getAttribute('data-domain');
+            const entry = `127.0.0.1 ${domain}`;
+            const psCmd = `Add-Content -Path 'C:\\Windows\\System32\\drivers\\etc\\hosts' -Value '${entry}'`;
+
+            navigator.clipboard.writeText(psCmd).then(() => {
+                alert(`已复制到剪贴板。\n\n请以管理员身份运行 PowerShell 并粘贴执行：\n\n${psCmd}\n\n或手动添加到 hosts 文件：\n${entry}`);
+            }).catch(() => {
+                prompt('复制失败，请手动复制以下命令（以管理员身份运行 PowerShell）：', psCmd);
+            });
+        }
+
+        async function fillSiteFromSelectedProject() {
+            try {
+                const data = await api('/projects');
+                const projects = data.projects || [];
+                if (!projects.length) {
+                    alert('当前还没有项目可填充。');
+                    return;
+                }
+                const names = projects.map(item => item.key).join(', ');
+                const key = prompt('输入要填充的项目标识：\n' + names, projects[0].key);
+                if (!key) return;
+                const project = projects.find(item => item.key === key);
+                if (!project) {
+                    alert('没有找到这个项目。');
+                    return;
+                }
+                document.getElementById('siteName').value = project.key || '';
+                document.getElementById('siteRoot').value = (project.type === 'static') ? project.path : `${String(project.path || '').replace(/\/$/, '')}/public`;
+                document.getElementById('siteProjectType').value = project.type === 'static' ? 'static' : 'laravel';
+                document.getElementById('sitePhpVersion').value = project.php || 'php83-fpm';
+                applySiteTypeDefaults();
+                syncSiteNameHints();
+            } catch (e) {
+                alert('读取项目失败：' + e.message);
+            }
+        }
+
+        function openConfigForSites() {
+            closeSiteModal();
+            showConfigPanel();
+            setTimeout(() => {
+                const search = document.getElementById('configFileSearch');
+                if (search) {
+                    search.value = 'services/nginx/sites';
+                    renderConfigFileList();
+                }
+            }, 300);
+        }
+
+        function openSiteConfig(path) {
+            closeSiteModal();
+            showConfigPanel();
+            setTimeout(() => {
+                if (typeof loadConfigFile === 'function') loadConfigFile(path);
+            }, 400);
+        }
+        // ============ 配置中心 ============
+        let currentConfigPath = '';
+        let currentConfigFile = null;
+        let configFiles = [];
+        let configGroups = [];
+        let configOriginalContent = '';
+        let configDirty = false;
+        let configCenterAvailable = true;
+
+        const CONFIG_GROUPS_FALLBACK = [
+            { name: '核心配置', order: 10, hint: '影响 Docker、环境变量和常用命令。' },
+            { name: '项目配置', order: 20, hint: '影响项目启动器和项目卡片。' },
+            { name: 'Nginx 配置', order: 30, hint: '影响站点访问、端口和反向代理。' },
+            { name: 'PHP 配置', order: 40, hint: '影响 PHP-FPM、OPcache 和 Xdebug。' },
+            { name: 'Redis 配置', order: 50, hint: '影响 Redis 运行参数。' },
+        ];
+
+        function showConfigPanel() {
+            document.getElementById('configModal').classList.add('active');
+            loadConfigFiles(false);
+        }
+
+        function closeConfigModal() {
+            if (configDirty && !confirm('当前配置有未保存修改，确定要关闭吗？')) return;
+            document.getElementById('configModal').classList.remove('active');
+        }
+        document.getElementById('configModal').onclick = e => e.target.id === 'configModal' && closeConfigModal();
+
+        document.getElementById('configEditor')?.addEventListener('input', () => {
+            configDirty = document.getElementById('configEditor').value !== configOriginalContent;
+            renderConfigDirtyState();
+        });
+
+        window.addEventListener('beforeunload', e => {
+            if (!configDirty) return;
+            e.preventDefault();
+            e.returnValue = '';
+        });
+
+        function inferConfigMeta(path, description = '') {
+            let group = '核心配置';
+            let risk = 'low';
+            let validator = 'text';
+            let nextAction = '保存后通常不需要额外操作。';
+            let applyAction = 'none';
+
+            if (path === 'docker-compose.yml') {
+                risk = 'high'; validator = 'compose'; nextAction = '保存后建议验证 Compose，并重启受影响的容器。'; applyAction = 'restart-containers';
+            } else if (path === '.env') {
+                risk = 'high'; validator = 'env'; nextAction = '保存后需要重启相关容器，环境变量才会重新加载。'; applyAction = 'restart-containers';
+            } else if (path.endsWith('.env.example')) {
+                validator = 'env';
+            } else if (path.startsWith('projects') || path === 'PROJECTS.md') {
+                group = '项目配置'; validator = path.endsWith('.json') ? 'json' : 'text'; risk = path === 'projects.json' ? 'medium' : 'low'; nextAction = '保存后刷新项目列表即可。'; applyAction = 'refresh-projects';
+            } else if (path.startsWith('services/nginx/')) {
+                group = 'Nginx 配置'; risk = path.includes('/sites/') ? 'medium' : 'high'; validator = 'nginx'; nextAction = '保存后建议验证 Nginx，再重载 Nginx。'; applyAction = 'reload-nginx';
+            } else if (path.startsWith('services/php-fpm/')) {
+                group = 'PHP 配置'; risk = 'medium'; validator = 'ini'; nextAction = '保存后重启相关 PHP-FPM 容器。'; applyAction = 'restart-php';
+            } else if (path.startsWith('services/redis/')) {
+                group = 'Redis 配置'; risk = 'medium'; nextAction = '保存后重启 Redis 容器。'; applyAction = 'restart-redis';
+            }
+
+            return { group, risk, validator, nextAction, applyAction, description };
+        }
+
+        function normalizeConfigFile(file) {
+            const meta = inferConfigMeta(file.path, file.description || '');
+            return {
+                name: (file.path || '').split('/').pop(),
+                backupCount: 0,
+                exists: true,
+                size: 0,
+                modified: null,
+                ...meta,
+                ...file,
+                group: file.group || meta.group,
+                risk: file.risk || meta.risk,
+                validator: file.validator || meta.validator,
+                nextAction: file.nextAction || meta.nextAction,
+                applyAction: file.applyAction || meta.applyAction,
+            };
+        }
+
+        async function loadConfigFiles(keepSelection = true) {
+            setConfigStatus('正在加载配置文件...', '');
+            try {
+                const data = await api('/config/center/files');
+                configCenterAvailable = true;
+                configFiles = (data.files || []).map(normalizeConfigFile);
+                configGroups = data.groups || CONFIG_GROUPS_FALLBACK;
+                document.getElementById('configCenterSubtitle').textContent = '增强模式：支持分组、智能验证、备份列表和恢复';
+            } catch (centerError) {
+                configCenterAvailable = false;
+                try {
+                    const data = await api('/config/files');
+                    configFiles = (data.files || []).map(normalizeConfigFile);
+                    configGroups = CONFIG_GROUPS_FALLBACK;
+                    document.getElementById('configCenterSubtitle').textContent = '兼容模式：重启 docker-panel 后可启用备份恢复和智能验证';
+                } catch (legacyError) {
+                    document.getElementById('configFileList').innerHTML = `<div style="color:var(--danger)">加载失败：${escapeHtml(legacyError.message)}</div>`;
+                    setConfigStatus('配置文件加载失败', 'error');
+                    return;
+                }
+            }
+
+            renderConfigFileList();
+            const stillExists = configFiles.some(file => file.path === currentConfigPath);
+            if (!keepSelection || !stillExists) {
+                const first = configFiles.find(file => file.exists) || configFiles[0];
+                if (first) await loadConfigFile(first.path, true);
+                else renderConfigEmptyState();
+            } else if (currentConfigPath) {
+                renderConfigFileMeta();
+            }
+            setConfigStatus(configCenterAvailable ? '配置中心已就绪' : '兼容模式已就绪，重启面板后启用增强能力', configCenterAvailable ? 'success' : 'warn');
+        }
+
+        function renderConfigFileList() {
+            const list = document.getElementById('configFileList');
+            if (!list) return;
+            const query = (document.getElementById('configFileSearch')?.value || '').trim().toLowerCase();
+            const visibleFiles = configFiles.filter(file => {
+                const haystack = [file.path, file.name, file.description, file.group].join(' ').toLowerCase();
+                return !query || haystack.includes(query);
+            });
+
+            if (!visibleFiles.length) {
+                list.innerHTML = '<div class="config-muted">没有匹配的配置文件。</div>';
+                return;
+            }
+
+            const byGroup = new Map();
+            visibleFiles.forEach(file => {
+                if (!byGroup.has(file.group)) byGroup.set(file.group, []);
+                byGroup.get(file.group).push(file);
+            });
+
+            const orderedGroups = [...byGroup.keys()].sort((a, b) => groupOrder(a) - groupOrder(b));
+            list.innerHTML = orderedGroups.map(group => {
+                const files = byGroup.get(group) || [];
+                return `
+                    <div class="config-group">
+                        <div class="config-group-title">
+                            <span>${escapeHtml(group)}</span>
+                            <span>${files.length}</span>
+                        </div>
+                        ${files.map(renderConfigFileItem).join('')}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function groupOrder(group) {
+            const found = configGroups.find(item => item.name === group);
+            return found ? Number(found.order || 999) : 999;
+        }
+
+        function renderConfigFileItem(file) {
+            const active = file.path === currentConfigPath;
+            const riskText = riskLabel(file.risk);
+            const backupText = file.backupCount ? `${file.backupCount} 份备份` : '无备份';
+            return `
+                <div class="config-file-item ${active ? 'active' : ''}" onclick="loadConfigFile(${jsArg(file.path)})">
+                    <div class="config-file-main">
+                        <div>
+                            <div class="config-file-name">${escapeHtml(file.name || file.path)}</div>
+                            <div class="config-file-desc">${escapeHtml(file.description || '')}</div>
+                        </div>
+                        <span class="config-pill risk-${escapeHtml(file.risk || 'low')}">${riskText}</span>
+                    </div>
+                    <div class="config-file-path">${escapeHtml(file.path)}</div>
+                    <div class="config-muted" style="margin-top:4px">${formatBytes(file.size)} · ${escapeHtml(file.modified || '未创建')} · ${backupText}</div>
+                </div>
+            `;
+        }
+
+        async function loadConfigFile(path, force = false) {
+            if (configDirty && !force && !confirm('当前配置有未保存修改，切换文件会丢失这些修改，确定继续吗？')) return;
+
+            currentConfigPath = path;
+            currentConfigFile = configFiles.find(file => file.path === path) || normalizeConfigFile({ path });
+            renderConfigFileList();
+            setConfigStatus('正在读取 ' + path + '...', '');
+            document.getElementById('configEditor').disabled = true;
+            document.getElementById('configEditor').value = '加载中...';
+            document.getElementById('configEmptyState').style.display = 'none';
+            document.getElementById('configValidationOutput').textContent = '尚未验证。';
+
+            try {
+                let data;
+                if (configCenterAvailable) {
+                    data = await api(`/config/center/read?path=${encodeURIComponent(path)}`);
+                    currentConfigFile = normalizeConfigFile(data.file || currentConfigFile);
+                } else {
+                    data = await api(`/config/read?path=${encodeURIComponent(path)}`);
+                    currentConfigFile = normalizeConfigFile({ ...currentConfigFile, size: data.size || currentConfigFile.size });
+                }
+
+                configOriginalContent = data.content || '';
+                document.getElementById('configEditor').value = configOriginalContent;
+                document.getElementById('configEditor').disabled = false;
+                configDirty = false;
+                renderConfigFileMeta();
+                renderConfigDirtyState();
+                await loadConfigBackups();
+                setConfigStatus('已加载 ' + path, 'success');
+            } catch (e) {
+                document.getElementById('configEditor').value = '';
+                document.getElementById('configEditor').disabled = true;
+                setConfigStatus('读取失败：' + e.message, 'error');
+                renderConfigFileMeta();
+            }
+        }
+
+        function renderConfigEmptyState() {
+            currentConfigPath = '';
+            currentConfigFile = null;
+            configOriginalContent = '';
+            configDirty = false;
+            document.getElementById('currentFileName').textContent = '请选择配置文件';
+            document.getElementById('currentFilePath').textContent = '左侧选择一个文件后开始编辑';
+            document.getElementById('configEditor').value = '';
+            document.getElementById('configEditor').disabled = true;
+            document.getElementById('configEmptyState').style.display = 'grid';
+            document.getElementById('configInspector').textContent = '选择文件后显示说明。';
+            document.getElementById('configBackupList').textContent = '选择文件后加载备份。';
+            renderConfigDirtyState();
+        }
+        function renderConfigFileMeta() {
+            const file = currentConfigFile;
+            if (!file) {
+                renderConfigEmptyState();
+                return;
+            }
+
+            document.getElementById('currentFileName').textContent = file.name || file.path;
+            document.getElementById('currentFilePath').textContent = file.path;
+            const risk = document.getElementById('currentFileRisk');
+            risk.className = `config-pill risk-${file.risk || 'low'}`;
+            risk.textContent = riskLabel(file.risk);
+            const validator = document.getElementById('currentFileValidator');
+            validator.className = 'config-pill neutral';
+            validator.textContent = validatorLabel(file.validator);
+            document.getElementById('configValidateBtn').textContent = validateButtonLabel(file.validator);
+
+            const applyBtn = document.getElementById('configApplyBtn');
+            const applyLabel = applyActionLabel(file.applyAction);
+            applyBtn.style.display = applyLabel ? 'inline-flex' : 'none';
+            applyBtn.textContent = applyLabel || '应用建议';
+
+            document.getElementById('configInspector').innerHTML = `
+                <div class="config-kv">
+                    <span>说明</span><strong>${escapeHtml(file.description || '-')}</strong>
+                    <span>分组</span><strong>${escapeHtml(file.group || '-')}</strong>
+                    <span>路径</span><strong>${escapeHtml(file.path || '-')}</strong>
+                    <span>大小</span><strong>${formatBytes(file.size)}</strong>
+                    <span>修改</span><strong>${escapeHtml(file.modified || '-')}</strong>
+                    <span>验证</span><strong>${validatorLabel(file.validator)}</strong>
+                    <span>后续</span><strong>${escapeHtml(file.nextAction || '保存后通常不需要额外操作。')}</strong>
+                </div>
+            `;
+        }
+
+        function renderConfigDirtyState() {
+            const dirty = document.getElementById('currentFileDirty');
+            const editor = document.getElementById('configEditor');
+            if (configDirty) {
+                dirty.className = 'config-pill risk-medium';
+                dirty.textContent = '未保存';
+                editor.classList.add('dirty');
+            } else {
+                dirty.className = 'config-pill neutral';
+                dirty.textContent = currentConfigPath ? '已保存' : '无修改';
+                editor.classList.remove('dirty');
+            }
+            renderConfigDiffSummary();
+        }
+
+        function renderConfigDiffSummary() {
+            const el = document.getElementById('configDiffSummary');
+            if (!currentConfigPath) {
+                el.textContent = '无变更';
+                return;
+            }
+            const current = document.getElementById('configEditor').value || '';
+            if (current === configOriginalContent) {
+                el.textContent = '无变更';
+                return;
+            }
+            const oldLines = configOriginalContent.split('\n');
+            const newLines = current.split('\n');
+            const max = Math.max(oldLines.length, newLines.length);
+            let changed = 0;
+            for (let i = 0; i < max; i++) {
+                if ((oldLines[i] || '') !== (newLines[i] || '')) changed++;
+            }
+            const charDelta = current.length - configOriginalContent.length;
+            el.textContent = `约 ${changed} 行变化，字符 ${charDelta >= 0 ? '+' : ''}${charDelta}`;
+        }
+
+        async function saveConfigFile() {
+            if (!currentConfigPath) {
+                alert('请先选择一个文件');
+                return;
+            }
+            const content = document.getElementById('configEditor').value;
+            if (!configDirty) {
+                setConfigStatus('没有检测到需要保存的修改。', 'warn');
+                return;
+            }
+            if ((currentConfigFile?.risk || '') === 'high' && !confirm('这是高影响配置。保存前会自动创建备份，确定继续吗？')) return;
+
+            setConfigStatus('正在保存并创建备份...', '');
+            try {
+                let data;
+                if (configCenterAvailable) {
+                    data = await api('/config/center/save', {
+                        method: 'POST',
+                        body: JSON.stringify({ path: currentConfigPath, content }),
+                    });
+                    currentConfigFile = normalizeConfigFile(data.data?.file || currentConfigFile);
+                } else {
+                    data = await api('/config/save', {
+                        method: 'POST',
+                        body: JSON.stringify({ path: currentConfigPath, content }),
+                    });
+                    currentConfigFile = normalizeConfigFile({ ...currentConfigFile, size: data.data?.size || content.length });
+                }
+
+                configOriginalContent = content;
+                configDirty = false;
+                renderConfigFileMeta();
+                renderConfigDirtyState();
+                await loadConfigBackups(data.data?.backups || null);
+                await loadConfigFiles(true);
+                const backupText = data.data?.backup ? `，备份：${data.data.backup}` : '，已创建备份';
+                setConfigStatus('保存成功' + backupText + '。' + (currentConfigFile?.nextAction || ''), 'success');
+            } catch (e) {
+                setConfigStatus('保存失败：' + e.message, 'error');
+            }
+        }
+
+        async function validateConfig() {
+            if (!currentConfigPath) {
+                alert('请先选择一个文件');
+                return;
+            }
+            setConfigStatus('正在验证配置...', '');
+            document.getElementById('configValidationOutput').textContent = '验证中...';
+
+            try {
+                let data;
+                if (configCenterAvailable) {
+                    data = await api('/config/center/validate', {
+                        method: 'POST',
+                        body: JSON.stringify({ path: currentConfigPath, content: document.getElementById('configEditor').value }),
+                    });
+                } else if ((currentConfigFile?.validator || '') === 'compose') {
+                    data = await api('/config/validate', { method: 'POST' });
+                } else {
+                    throw new Error('当前后端尚未加载智能验证接口。请重启 docker-panel 后再验证此类型文件。');
+                }
+
+                const output = data.data?.output || data.message || '验证通过。';
+                document.getElementById('configValidationOutput').textContent = output;
+                setConfigStatus(data.message || '验证通过', 'success');
+            } catch (e) {
+                document.getElementById('configValidationOutput').textContent = e.message;
+                setConfigStatus('验证失败：' + e.message, 'error');
+            }
+        }
+
+        async function loadConfigBackups(preloaded = null) {
+            const box = document.getElementById('configBackupList');
+            if (!currentConfigPath) {
+                box.textContent = '选择文件后加载备份。';
+                return;
+            }
+            if (!configCenterAvailable) {
+                box.innerHTML = '<div class="config-muted">兼容模式暂不能查看备份。重启 docker-panel 后启用。</div>';
+                return;
+            }
+
+            try {
+                const backups = preloaded || (await api(`/config/center/backups?path=${encodeURIComponent(currentConfigPath)}`)).backups || [];
+                currentConfigFile = normalizeConfigFile({ ...currentConfigFile, backupCount: backups.length });
+                renderConfigFileMeta();
+                renderConfigFileList();
+                if (!backups.length) {
+                    box.innerHTML = '<div class="config-muted">暂无备份。首次保存后会自动生成。</div>';
+                    return;
+                }
+                box.innerHTML = backups.slice(0, 8).map(backup => `
+                    <div class="config-backup-item">
+                        <div style="font-weight:700;font-size:12px;word-break:break-all">${escapeHtml(backup.name)}</div>
+                        <div class="config-muted">${escapeHtml(backup.modified || '')} · ${formatBytes(backup.size)}</div>
+                        <div class="config-backup-actions">
+                            <button class="btn btn-sm" style="background:var(--gray-100);color:var(--gray-700)" onclick="previewConfigBackup(${jsArg(backup.name)})">查看</button>
+                            <button class="btn btn-sm" style="background:#fee2e2;color:#991b1b" onclick="restoreConfigBackup(${jsArg(backup.name)})">恢复</button>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (e) {
+                box.innerHTML = `<div style="color:var(--danger)">备份加载失败：${escapeHtml(e.message)}</div>`;
+            }
+        }
+
+        async function previewConfigBackup(backupName) {
+            try {
+                const data = await api(`/config/center/backup-read?path=${encodeURIComponent(currentConfigPath)}&backup=${encodeURIComponent(backupName)}`);
+                const content = data.content || '';
+                const oldLines = configOriginalContent.split('\n').length;
+                const backupLines = content.split('\n').length;
+                document.getElementById('configValidationOutput').textContent = `备份：${backupName}\n大小：${formatBytes(data.size)}\n行数：${backupLines}\n当前文件行数：${oldLines}\n\n预览前 1200 字符：\n${content.slice(0, 1200)}`;
+                setConfigStatus('已读取备份预览。', 'success');
+            } catch (e) {
+                setConfigStatus('读取备份失败：' + e.message, 'error');
+            }
+        }
+
+        async function restoreConfigBackup(backupName) {
+            if (!currentConfigPath) return;
+            if (configDirty && !confirm('当前还有未保存修改，恢复备份会覆盖编辑器内容，确定继续吗？')) return;
+            if (!confirm(`确定恢复备份 ${backupName} 吗？恢复前会再次备份当前文件。`)) return;
+
+            setConfigStatus('正在恢复备份...', '');
+            try {
+                const data = await api('/config/center/restore', {
+                    method: 'POST',
+                    body: JSON.stringify({ path: currentConfigPath, backup: backupName }),
+                });
+                currentConfigFile = normalizeConfigFile(data.data?.file || currentConfigFile);
+                configOriginalContent = data.data?.content || '';
+                document.getElementById('configEditor').value = configOriginalContent;
+                configDirty = false;
+                renderConfigFileMeta();
+                renderConfigDirtyState();
+                await loadConfigBackups(data.data?.backups || null);
+                setConfigStatus('备份已恢复。' + (currentConfigFile?.nextAction || ''), 'success');
+            } catch (e) {
+                setConfigStatus('恢复失败：' + e.message, 'error');
+            }
+        }
+
+        function applyConfigAction() {
+            const action = currentConfigFile?.applyAction || 'none';
+            if (action === 'reload-nginx') {
+                reloadNginx();
+                return;
+            }
+            if (action === 'refresh-projects') {
+                loadProjects();
+                setConfigStatus('项目列表已刷新。', 'success');
+                return;
+            }
+
+            showTerminal('配置应用建议');
+            appendTerminal('当前文件：' + (currentConfigPath || '-'), 'info');
+            appendTerminal(currentConfigFile?.nextAction || '保存后通常不需要额外操作。', 'stdout');
+            if (action === 'restart-php') {
+                appendTerminal('\n建议命令示例：', 'info');
+                appendTerminal('docker-compose restart php83-fpm', 'cmd');
+                appendTerminal('如果你改的是其它 PHP 版本，请替换为对应 php73-fpm / php80-fpm / php81-fpm。', 'info');
+            } else if (action === 'restart-redis') {
+                appendTerminal('\n建议命令：docker-compose restart redis', 'cmd');
+            } else if (action === 'restart-containers') {
+                appendTerminal('\n建议命令：docker-compose up -d', 'cmd');
+                appendTerminal('如果只影响单个服务，也可以只重启对应服务。', 'info');
+            }
+            setTerminalStatus('建议已生成', true);
+        }
+
+        function setConfigStatus(message, type = '') {
+            const el = document.getElementById('configStatus');
+            if (!el) return;
+            el.className = 'config-status ' + (type || '');
+            el.textContent = message;
+        }
+
+        function riskLabel(risk) {
+            return { high: '高风险', medium: '中风险', low: '低风险' }[risk] || '低风险';
+        }
+
+        function validatorLabel(validator) {
+            return {
+                compose: 'Compose 验证',
+                nginx: 'Nginx 验证',
+                json: 'JSON 检查',
+                env: '环境变量检查',
+                ini: 'INI 检查',
+                text: '文本检查',
+            }[validator] || '文本检查';
+        }
+
+        function validateButtonLabel(validator) {
+            return {
+                compose: '验证 Compose',
+                nginx: '验证 Nginx',
+                json: '检查 JSON',
+                env: '检查环境变量',
+                ini: '检查 INI',
+                text: '基础检查',
+            }[validator] || '基础检查';
+        }
+
+        function applyActionLabel(action) {
+            return {
+                'reload-nginx': '重载 Nginx',
+                'refresh-projects': '刷新项目',
+                'restart-php': '查看重启建议',
+                'restart-redis': '查看重启建议',
+                'restart-containers': '查看应用建议',
+            }[action] || '';
+        }
+
+        function formatBytes(bytes) {
+            const value = Number(bytes || 0);
+            if (value < 1024) return value + ' B';
+            if (value < 1024 * 1024) return (value / 1024).toFixed(1) + ' KB';
+            return (value / 1024 / 1024).toFixed(1) + ' MB';
+        }
+        checkAuth();
+        setInterval(() => document.getElementById('appPage').classList.contains('active') && loadContainers(), 30000);
+    </script>
+</body>
+
+</html>

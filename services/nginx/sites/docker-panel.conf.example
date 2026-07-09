@@ -1,0 +1,35 @@
+server {
+    listen 80;
+    server_name docker-panel.localhost;
+
+    root /var/www/docker-panel/public;
+    index index.html;
+
+    # 静态文件
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # API 路由
+    location /api {
+        alias /var/www/docker-panel/api;
+        
+        # 重写到 index.php
+        rewrite ^/api/(.*)$ /api/index.php last;
+    }
+
+    location ~ \.php$ {
+        root /var/www/docker-panel;
+        fastcgi_split_path_info ^(.+\.php)(/.+)$;
+        fastcgi_pass php-upstream;
+        fastcgi_index index.php;
+        include fastcgi_params;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        fastcgi_param PATH_INFO $fastcgi_path_info;
+    }
+
+    # 禁止访问隐藏文件
+    location ~ /\. {
+        deny all;
+    }
+}
