@@ -1,4 +1,4 @@
-FROM php:8.1-cli-alpine
+FROM php:8.3-cli-alpine
 
 # 安装系统依赖
 RUN apk add --no-cache \
