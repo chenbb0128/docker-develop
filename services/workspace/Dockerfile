@@ -111,9 +111,9 @@ ARG INSTALL_COMPOSER=true
 ARG COMPOSER_VERSION=2
 ARG COMPOSER_REPO_PACKAGIST=https://mirrors.aliyun.com/composer/
 
-RUN if [ ${INSTALL_COMPOSER} = true ]; then \
+RUN if [ "${INSTALL_COMPOSER}" = "true" ]; then \
     curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer \
-    && if [ ${COMPOSER_REPO_PACKAGIST} ]; then \
+    && if [ -n "${COMPOSER_REPO_PACKAGIST}" ]; then \
         composer config -g repo.packagist composer ${COMPOSER_REPO_PACKAGIST} \
     ;fi \
 ;fi
@@ -177,6 +177,11 @@ RUN chown -R developer:developer ${CONTAINER_PROJECT_PATH}
 
 # 默认使用 developer 用户
 USER developer
+
+# developer 用户也使用 Composer 镜像源
+RUN if [ "${INSTALL_COMPOSER}" = "true" ] && [ -n "${COMPOSER_REPO_PACKAGIST}" ]; then \
+    composer config -g repo.packagist composer ${COMPOSER_REPO_PACKAGIST} \
+;fi
 
 # 保持容器运行
 CMD ["tail", "-f", "/dev/null"]

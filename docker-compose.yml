@@ -188,6 +188,7 @@ services:
         - IMAGEMAGICK_VERSION=${PHP_FPM_IMAGEMAGICK_VERSION}
         - CONTAINER_PROJECT_PATH=${CONTAINER_PROJECT_PATH}
         - INSTALL_COMPOSER=${INSTALL_COMPOSER}
+        - COMPOSER_REPO_PACKAGIST=${WORKSPACE_COMPOSER_REPO_PACKAGIST}
     volumes:
       - ${HOST_PROJECT_PATH}:${CONTAINER_PROJECT_PATH}
       - C:/Develop/Docker/docker-develop/services/php-fpm/php${PHP_VERSION}.ini:/usr/local/etc/php/php.ini
@@ -224,6 +225,7 @@ services:
         - IMAGEMAGICK_VERSION=${PHP_FPM_IMAGEMAGICK_VERSION}
         - CONTAINER_PROJECT_PATH=${CONTAINER_PROJECT_PATH}
         - INSTALL_COMPOSER=${INSTALL_COMPOSER}
+        - COMPOSER_REPO_PACKAGIST=${WORKSPACE_COMPOSER_REPO_PACKAGIST}
     volumes:
       - ${HOST_PROJECT_PATH}:${CONTAINER_PROJECT_PATH}
       - C:/Develop/Docker/docker-develop/services/php-fpm/php7.3.ini:/usr/local/etc/php/php.ini
@@ -258,6 +260,7 @@ services:
         - IMAGEMAGICK_VERSION=${PHP_FPM_IMAGEMAGICK_VERSION}
         - CONTAINER_PROJECT_PATH=${CONTAINER_PROJECT_PATH}
         - INSTALL_COMPOSER=${INSTALL_COMPOSER}
+        - COMPOSER_REPO_PACKAGIST=${WORKSPACE_COMPOSER_REPO_PACKAGIST}
     volumes:
       - ${HOST_PROJECT_PATH}:${CONTAINER_PROJECT_PATH}
       - C:/Develop/Docker/docker-develop/services/php-fpm/php8.0.ini:/usr/local/etc/php/php.ini
@@ -292,6 +295,7 @@ services:
         - IMAGEMAGICK_VERSION=${PHP_FPM_IMAGEMAGICK_VERSION}
         - CONTAINER_PROJECT_PATH=${CONTAINER_PROJECT_PATH}
         - INSTALL_COMPOSER=${INSTALL_COMPOSER}
+        - COMPOSER_REPO_PACKAGIST=${WORKSPACE_COMPOSER_REPO_PACKAGIST}
     volumes:
       - ${HOST_PROJECT_PATH}:${CONTAINER_PROJECT_PATH}
       - C:/Develop/Docker/docker-develop/services/php-fpm/php8.1.ini:/usr/local/etc/php/php.ini
@@ -326,6 +330,7 @@ services:
         - IMAGEMAGICK_VERSION=${PHP_FPM_IMAGEMAGICK_VERSION}
         - CONTAINER_PROJECT_PATH=${CONTAINER_PROJECT_PATH}
         - INSTALL_COMPOSER=${INSTALL_COMPOSER}
+        - COMPOSER_REPO_PACKAGIST=${WORKSPACE_COMPOSER_REPO_PACKAGIST}
     volumes:
       - ${HOST_PROJECT_PATH}:${CONTAINER_PROJECT_PATH}
       - C:/Develop/Docker/docker-develop/services/php-fpm/php8.3.ini:/usr/local/etc/php/php.ini

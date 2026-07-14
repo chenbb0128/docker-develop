@@ -25,6 +25,9 @@ RUN apk del $PHPIZE_DEPS linux-headers \
 
 # 安装 Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+ENV COMPOSER_ALLOW_SUPERUSER=1
+ARG COMPOSER_REPO_PACKAGIST=https://mirrors.aliyun.com/composer/
+RUN composer config -g repo.packagist composer ${COMPOSER_REPO_PACKAGIST}
 
 # 设置工作目录
 WORKDIR /var/www/docker-panel

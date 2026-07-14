@@ -352,10 +352,12 @@ fi
 ###########################################################################
 
 ARG INSTALL_COMPOSER=false
-RUN if [ ${INSTALL_COMPOSER} = true ]; then \
+ARG COMPOSER_REPO_PACKAGIST=https://mirrors.aliyun.com/composer/
+RUN if [ "${INSTALL_COMPOSER}" = "true" ]; then \
     curl -s http://getcomposer.org/installer | php && \
     echo "export PATH=${PATH}:/var/www/vendor/bin" >> ~/.bashrc && \
-    mv composer.phar /usr/local/bin/composer \
+    mv composer.phar /usr/local/bin/composer && \
+    composer config -g repo.packagist composer ${COMPOSER_REPO_PACKAGIST} \
 ;fi
 
 ###########################################################################
