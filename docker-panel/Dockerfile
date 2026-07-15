@@ -33,4 +33,4 @@ RUN composer config -g repo.packagist composer ${COMPOSER_REPO_PACKAGIST}
 WORKDIR /var/www/docker-panel
 
 # 默认命令
-CMD ["php", "bin/hyperf.php", "start"]
+CMD ["sh", "start-panel.sh"]

@@ -145,7 +145,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./:/var/www/docker-develop
     working_dir: /var/www/docker-panel
-    command: sh -lc 'unset PHP_VERSION; exec php bin/hyperf.php start'
+    command: sh -lc 'sh start-panel.sh'
     ports:
       - "127.0.0.1:9501:9501"
     extra_hosts:
