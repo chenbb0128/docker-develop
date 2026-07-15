@@ -145,7 +145,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./:/var/www/docker-develop
     working_dir: /var/www/docker-panel
-    command: sh -lc 'sh start-panel.sh'
+    command: sh -lc 'tr -d "\r" < start-panel.sh > /tmp/start-panel.sh && exec sh /tmp/start-panel.sh'
     ports:
       - "127.0.0.1:9501:9501"
     extra_hosts:
