@@ -460,7 +460,8 @@ class ProjectController extends AbstractController
         }
 
         if (preg_match('/^[a-zA-Z]:\//', $normalized)) {
-            throw new \RuntimeException('Host path is outside HOST_PROJECT_PATH. Use a /develop/... container path or update .env.');
+            $hostDisplay = $hostRoot !== '' ? $hostRoot : '(not set)';
+            throw new \RuntimeException('Host path is outside HOST_PROJECT_PATH (' . $hostDisplay . '). Use a /develop/... container path or update .env.');
         }
 
         return $this->joinContainerPath($containerRoot, $normalized);

@@ -818,7 +818,7 @@
         .hero-eyebrow { display: block; color: var(--gray-500); font-size: 13px; font-weight: 700; margin-bottom: 8px; }
         .hero-copy h2 { font-size: 30px; line-height: 1.25; letter-spacing: 0; max-width: 760px; color: var(--ink); }
         .hero-copy p { color: var(--gray-600); line-height: 1.65; margin-top: 10px; max-width: 760px; font-size: 15px; }
-        .setup-list { margin-top: 26px; display: grid; gap: 12px; max-width: 700px; }
+        .setup-list { margin-top: 26px; display: grid; gap: 12px; max-width: none; }
         .setup-item {
             display: grid;
             grid-template-columns: 42px minmax(0, 1fr) 24px;
@@ -1093,7 +1093,7 @@
                         <option value="php73-fpm">PHP 7.3</option>
                         <option value="php-fpm">默认 PHP</option>
                     </select>
-                    <input id="projectPath" placeholder="项目路径，例如 C:\Develop\Hua\Projects\Demo 或 /develop/demo">
+                    <input id="projectPath" placeholder="项目路径，例如 /develop/demo 或 /develop/ServiceApi">
                     <input id="projectPort" type="number" min="1024" max="65535" placeholder="访问端口，例如 9502">
                     <div class="project-field project-field-wide">
                         <label>服务（可多选）</label>
@@ -2011,6 +2011,22 @@
             return String(value || 'project').trim().toLowerCase().replace(/[^a-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '') || 'project';
         }
 
+        function safePathPart(value) {
+            return String(value || 'project').trim().replace(/[^a-zA-Z0-9_-]+/g, '-').replace(/^-+|-+$/g, '') || 'project';
+        }
+
+        function suggestProjectPath(force = false) {
+            if (document.getElementById('projectMode').value !== 'scaffold') return;
+            const key = safePathPart(document.getElementById('projectKey')?.value || '');
+            if (!key) return;
+            const input = document.getElementById('projectPath');
+            if (!input) return;
+            const current = input.value.trim();
+            if (!force && current && input.dataset.autoFilled !== '1') return;
+            input.value = `/develop/${key}`;
+            input.dataset.autoFilled = '1';
+        }
+
         function projectHyperfServiceName() {
             return `hyperf-${safeServicePart(document.getElementById('projectKey')?.value || 'project')}`;
         }
@@ -2108,11 +2124,16 @@
             const name = document.getElementById('projectName');
             if (!name.value.trim()) name.value = key;
 
-            if (document.getElementById('projectType').value !== 'hyperf') return;
+            if (document.getElementById('projectType').value !== 'hyperf') {
+                suggestProjectPath();
+                return;
+            }
             const current = parseServiceText(document.getElementById('projectServices').value);
             const hasOnlyDefault = current.length === 0 || current.every(item => item === 'redis' || item.startsWith('hyperf-'));
             if (hasOnlyDefault) setProjectServices(defaultProjectServices('hyperf'));
             else renderProjectServiceOptions(current);
+
+            suggestProjectPath();
         }
 
         function handleProjectPhpChange() {
@@ -2168,6 +2189,7 @@
             } else {
                 hint.textContent = '完整接入会生成项目卡片、Nginx 站点配置和端口映射；不会修改项目源码。';
             }
+            suggestProjectPath();
         }
 
         function applyProjectTypeDefaults(reset = false) {
@@ -2198,6 +2220,7 @@
 
             if (reset) {
                 document.getElementById('projectRoot').value = '';
+                document.getElementById('projectPath').dataset.autoFilled = '';
                 document.getElementById('projectServerName').value = 'localhost';
                 document.getElementById('projectForce').checked = false;
             }
@@ -2212,6 +2235,10 @@
         }
 
         document.getElementById('projectPort')?.addEventListener('input', () => updateProjectUrl(true));
+        document.getElementById('projectPath')?.addEventListener('input', () => {
+            const input = document.getElementById('projectPath');
+            if (input) input.dataset.autoFilled = '';
+        });
 
         function readProjectForm() {
             const key = document.getElementById('projectKey').value.trim();
@@ -2372,6 +2399,7 @@
             document.getElementById('projectForce').checked = false;
             document.getElementById('projectCommandPreset').value = '';
             document.getElementById('projectLogPreset').value = '';
+            document.getElementById('projectPath').dataset.autoFilled = '';
             applyProjectTypeDefaults(true);
         }
 
@@ -2391,6 +2419,7 @@
             document.getElementById('projectLog').value = project.log || '';
             document.getElementById('projectUrl').value = project.url || '';
             document.getElementById('projectRoot').value = '';
+            document.getElementById('projectPath').dataset.autoFilled = '';
             document.getElementById('projectServerName').value = 'localhost';
             document.getElementById('projectForce').checked = false;
             document.getElementById('projectCommandPreset').value = '';
