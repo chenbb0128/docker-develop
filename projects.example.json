@@ -9,7 +9,7 @@
       "port": 9502,
       "service": "hyperf-demo-hyperf",
       "services": ["hyperf-demo-hyperf", "redis"],
-      "command": "php bin/hyperf.php start",
+      "command": "if php bin/hyperf.php list 2>/dev/null | grep -q \"server:watch\"; then php bin/hyperf.php server:watch; else php bin/hyperf.php start; fi",
       "log": "runtime/logs/hyperf.log",
       "url": "http://localhost:9502",
       "notes": "Hyperf uses one dedicated container per project. Host port 9502 maps to container port 9501 by default."

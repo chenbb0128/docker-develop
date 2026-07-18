@@ -45,10 +45,15 @@ projects.json
 # 日志和数据目录
 # ===================================
 /logs/
+!/logs/
 !/logs/.gitkeep
+!/logs/nginx/
+!/logs/nginx/.gitkeep
 /data/
+!/data/
 !/data/.gitkeep
 /cache/
+!/cache/
 !/cache/.gitkeep
 
 # ===================================

@@ -29,6 +29,8 @@
 
 $ErrorActionPreference = 'Stop'
 $RootDir = $PSScriptRoot
+$DefaultHyperfCommand = 'if php bin/hyperf.php list 2>/dev/null | grep -q "server:watch"; then php bin/hyperf.php server:watch; else php bin/hyperf.php start; fi'
+$DefaultHyperfStartupPrepare = 'git config --global --add safe.directory "$$PWD" 2>/dev/null || true; if [ -f composer.json ] && [ ! -f vendor/autoload.php ]; then composer install --no-interaction --prefer-dist; fi'
 
 function Read-DotEnv {
     param([string] $FilePath)
@@ -114,7 +116,16 @@ function Convert-ToContainerPath {
     if ([System.IO.Path]::IsPathRooted($raw)) {
         $inputFull = [System.IO.Path]::GetFullPath($raw)
     } else {
-        $inputFull = [System.IO.Path]::GetFullPath((Join-Path $hostFull $raw))
+        $candidateFull = [System.IO.Path]::GetFullPath((Join-Path $RootDir $raw))
+        $trimChars = [char[]] @('\', '/')
+        $hostCandidateNorm = $hostFull.TrimEnd($trimChars).ToLowerInvariant()
+        $candidateNorm = $candidateFull.TrimEnd($trimChars).ToLowerInvariant()
+        $separator = [System.IO.Path]::DirectorySeparatorChar
+        if ($candidateNorm -eq $hostCandidateNorm -or $candidateNorm.StartsWith($hostCandidateNorm + $separator)) {
+            $inputFull = $candidateFull
+        } else {
+            $inputFull = [System.IO.Path]::GetFullPath((Join-Path $hostFull $raw))
+        }
     }
 
     $trimChars = [char[]] @('\', '/')
@@ -181,7 +192,7 @@ function New-HyperfServiceConfig {
     )
 
     $quotedPath = Quote-YamlSingle $ProjectPath
-    $quotedCommand = Quote-YamlSingle $StartCommand
+    $quotedCommand = Quote-YamlSingle ($DefaultHyperfStartupPrepare + '; ' + $StartCommand)
 
     return @"
 
@@ -250,15 +261,14 @@ function Ensure-HyperfComposeService {
     if ([regex]::IsMatch($content, $pattern)) {
         $content = [regex]::Replace($content, $pattern, [Environment]::NewLine + $block)
     } else {
-        $marker = "#---------------------------------------------`r`n# Docker 管理面板"
-        $lfMarker = "#---------------------------------------------`n# Docker 管理面板"
-        if ($content.Contains($marker)) {
-            $content = $content.Replace($marker, $block + [Environment]::NewLine + [Environment]::NewLine + $marker)
-        } elseif ($content.Contains($lfMarker)) {
-            $content = $content.Replace($lfMarker, $block + [Environment]::NewLine + [Environment]::NewLine + $lfMarker)
-        } else {
+        $markerPattern = '(?m)#-+\r?\n# Docker 管理面板[^\r\n]*(?:\r?\n#-+[^\r\n]*)?'
+        if (-not [regex]::IsMatch($content, $markerPattern)) {
             throw "没有找到插入 Hyperf service 的位置。"
         }
+        $content = [regex]::Replace($content, $markerPattern, {
+            param($match)
+            return $block + [Environment]::NewLine + [Environment]::NewLine + $match.Value
+        }, 1)
     }
 
     Write-Utf8NoBom $ComposeFile ($content.TrimEnd() + [Environment]::NewLine)
@@ -497,7 +507,7 @@ function Start-InteractiveWizard {
         }
 
         $script:Services = Read-WithDefault "依赖服务，默认会使用项目专属容器和 redis" "redis"
-        $script:Command = Read-WithDefault "启动命令" "php bin/hyperf.php start"
+        $script:Command = Read-WithDefault "启动命令" $DefaultHyperfCommand
         $script:Log = Read-WithDefault "日志路径" "runtime/logs/hyperf.log"
     } elseif ($script:Type -eq "static") {
         $script:Port = [int] (Read-WithDefault "访问端口" "8002")
@@ -598,7 +608,7 @@ if ($Type -eq 'hyperf' -and -not ($projectServices -contains $hyperfServiceName)
 }
 
 if ($Command -eq '' -and $Type -eq 'hyperf') {
-    $Command = 'php bin/hyperf.php start'
+    $Command = $DefaultHyperfCommand
 }
 if ($Log -eq '' -and $Type -eq 'hyperf') {
     $Log = 'runtime/logs/hyperf.log'
@@ -718,8 +728,8 @@ if ($siteRoot -ne '') {
 Write-Host ''
 Write-Host "下一步："
 if ($Type -eq 'hyperf') {
-    Write-Host "docker-compose build $hyperfServiceName"
-    Write-Host "docker-compose up -d $hyperfServiceName redis docker-panel"
+    Write-Host "打开面板后点击项目卡片的 Start；面板会自动 build，缺 vendor 时会自动 composer install。"
+    Write-Host "如果要用命令行直接启动，也可以执行：docker-compose up -d --build $hyperfServiceName redis docker-panel"
     Write-Host "容器内默认监听 9501，宿主机访问端口是 $Port。"
     Write-Host "然后访问：$Url"
 } else {

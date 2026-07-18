@@ -12,6 +12,9 @@ use Hyperf\HttpServer\Annotation\RequestMapping;
 #[Controller]
 class ProjectController extends AbstractController
 {
+    private const HYPERF_DEV_COMMAND = 'if php bin/hyperf.php list 2>/dev/null | grep -q "server:watch"; then php bin/hyperf.php server:watch; else php bin/hyperf.php start; fi';
+    private const HYPERF_STARTUP_PREPARE = 'git config --global --add safe.directory "$$PWD" 2>/dev/null || true; if [ -f composer.json ] && [ ! -f vendor/autoload.php ]; then composer install --no-interaction --prefer-dist; fi';
+
     #[Inject]
     protected DockerService $docker;
 
@@ -75,7 +78,7 @@ class ProjectController extends AbstractController
         }
 
         if ($project['command'] === '' && $project['type'] === 'hyperf') {
-            $project['command'] = 'php bin/hyperf.php start';
+            $project['command'] = self::HYPERF_DEV_COMMAND;
         }
         if ($project['log'] === '' && $project['type'] === 'hyperf') {
             $project['log'] = 'runtime/logs/hyperf.log';
@@ -145,7 +148,7 @@ class ProjectController extends AbstractController
                 array_unshift($services, $service);
             }
             if ($command === '' && $type === 'hyperf') {
-                $command = 'php bin/hyperf.php start';
+                $command = self::HYPERF_DEV_COMMAND;
             }
             if ($log === '' && $type === 'hyperf') {
                 $log = 'runtime/logs/hyperf.log';
@@ -207,8 +210,8 @@ class ProjectController extends AbstractController
             }
 
             $nextSteps = $type === 'hyperf'
-                ? ['docker-compose build ' . $service, 'docker-compose up -d ' . $service . ' redis docker-panel', 'Open ' . $url]
-                : ['docker-compose up -d ' . implode(' ', $services) . ' docker-panel', 'Reload or restart nginx if a new port was added', 'Open ' . $url];
+                ? ['在项目卡片点击 Start；面板会自动 build，缺 vendor 时会自动 composer install。', '打开 ' . $url]
+                : ['docker-compose up -d ' . implode(' ', $services) . ' docker-panel', '新增端口后重启 Nginx，普通配置变更可重载 Nginx。', '打开 ' . $url];
 
             if ($dryRun) {
                 return $this->success([
@@ -263,8 +266,7 @@ class ProjectController extends AbstractController
             $services = $this->projectServices($project);
             $output = [];
             if (!empty($services)) {
-                $serviceText = implode(' ', array_map('escapeshellarg', $services));
-                $output[] = $this->runHostCommand("docker-compose up -d --no-build {$serviceText}");
+                $output[] = $this->startProjectServices($services);
             }
 
             return $this->success([
@@ -321,8 +323,7 @@ class ProjectController extends AbstractController
                 $output[] = $this->runHostCommand('docker-compose stop ' . escapeshellarg($this->hyperfService($project)));
             }
             if (!empty($services)) {
-                $serviceText = implode(' ', array_map('escapeshellarg', $services));
-                $output[] = $this->runHostCommand("docker-compose up -d --no-build {$serviceText}");
+                $output[] = $this->startProjectServices($services);
             }
 
             return $this->success([
@@ -385,7 +386,7 @@ class ProjectController extends AbstractController
 
         try {
             $execService = $this->commandService($project);
-            $this->runHostCommand('docker-compose up -d --no-build ' . escapeshellarg($execService));
+            $this->startProjectServices([$execService]);
             $path = $this->containerPath($project);
             $this->prepareProjectRuntime($execService, $path, str_starts_with($commandKey, 'composer-'));
             $output = $this->runServiceCommand($execService, 'cd ' . escapeshellarg($path) . ' && ' . $command);
@@ -454,8 +455,8 @@ class ProjectController extends AbstractController
         $hostRoot = rtrim($hostRoot, '/');
         $containerRoot = '/' . trim($containerRoot, '/');
 
-        if ($hostRoot !== '' && str_starts_with(strtolower($normalized), strtolower($hostRoot))) {
-            $relative = ltrim(substr($normalized, strlen($hostRoot)), '/');
+        $relative = $this->relativePathFromHostRoot($normalized, $hostRoot);
+        if ($relative !== null) {
             return $this->joinContainerPath($containerRoot, $relative);
         }
 
@@ -465,6 +466,49 @@ class ProjectController extends AbstractController
         }
 
         return $this->joinContainerPath($containerRoot, $normalized);
+    }
+
+    private function relativePathFromHostRoot(string $input, string $hostRoot): ?string
+    {
+        if ($hostRoot === '') {
+            return null;
+        }
+
+        if (str_starts_with(strtolower($input), strtolower($hostRoot))) {
+            return ltrim(substr($input, strlen($hostRoot)), '/');
+        }
+
+        if (preg_match('/^[a-zA-Z]:\//', $hostRoot) || str_starts_with($hostRoot, '/')) {
+            return null;
+        }
+
+        $hostAbs = $this->normalizeLocalPath($this->projectPath . '/' . $hostRoot);
+        $inputAbs = $this->normalizeLocalPath($this->projectPath . '/' . $input);
+        if ($inputAbs === $hostAbs) {
+            return '';
+        }
+        if (str_starts_with(strtolower($inputAbs), strtolower($hostAbs . '/'))) {
+            return ltrim(substr($inputAbs, strlen($hostAbs)), '/');
+        }
+
+        return null;
+    }
+
+    private function normalizeLocalPath(string $path): string
+    {
+        $parts = [];
+        foreach (explode('/', str_replace('\\', '/', $path)) as $part) {
+            if ($part === '' || $part === '.') {
+                continue;
+            }
+            if ($part === '..') {
+                array_pop($parts);
+                continue;
+            }
+            $parts[] = $part;
+        }
+
+        return '/' . implode('/', $parts);
     }
 
     private function joinContainerPath(string $base, string $child): string
@@ -602,14 +646,11 @@ class ProjectController extends AbstractController
         if (preg_match($pattern, $content)) {
             $content = preg_replace($pattern, PHP_EOL . $block, $content, 1) ?? $content;
         } else {
-            $marker = '#---------------------------------------------' . PHP_EOL . '# Docker 管理面板';
-            if (!str_contains($content, $marker)) {
-                $marker = '#---------------------------------------------' . "\n" . '# Docker 管理面板';
-            }
-            if (!str_contains($content, $marker)) {
+            $markerPattern = '/#-+\R# Docker 管理面板[^\r\n]*(?:\R#-+[^\r\n]*)?/';
+            if (!preg_match($markerPattern, $content)) {
                 throw new \RuntimeException('Unable to find docker-panel marker in docker-compose.yml.');
             }
-            $content = str_replace($marker, $block . PHP_EOL . PHP_EOL . $marker, $content);
+            $content = preg_replace($markerPattern, $block . PHP_EOL . PHP_EOL . '$0', $content, 1) ?? $content;
         }
 
         $this->writeTextFile($composeFile, rtrim($content) . PHP_EOL);
@@ -643,7 +684,7 @@ class ProjectController extends AbstractController
             '        - TZ=${TIMEZONE}',
             '        - CONTAINER_PROJECT_PATH=${CONTAINER_PROJECT_PATH}',
             '    working_dir: ' . $this->yamlSingleQuote($path),
-            '    command: sh -lc ' . $this->yamlSingleQuote($command),
+            '    command: sh -lc ' . $this->yamlSingleQuote(self::HYPERF_STARTUP_PREPARE . '; ' . $command),
             '    volumes:',
             '      - ${HOST_PROJECT_PATH}:${CONTAINER_PROJECT_PATH}',
             '    extra_hosts:',
@@ -889,7 +930,7 @@ class ProjectController extends AbstractController
     {
         $output = [];
         $returnVar = 0;
-        exec('cd ' . escapeshellarg($this->projectPath) . ' && unset PHP_VERSION && ' . $command . ' 2>&1', $output, $returnVar);
+        exec('cd ' . escapeshellarg($this->projectPath) . ' && unset PHP_VERSION && ' . $this->composeHostEnvPrefix() . $command . ' 2>&1', $output, $returnVar);
         $text = implode("\n", $output);
         if ($returnVar !== 0) {
             throw new \RuntimeException($text !== '' ? $text : 'Command failed.');
@@ -898,9 +939,130 @@ class ProjectController extends AbstractController
         return $text;
     }
 
+    private function composeHostEnvPrefix(): string
+    {
+        $hostProjectRoot = $this->detectHostProjectRoot();
+        if ($hostProjectRoot === null) {
+            return '';
+        }
+
+        $env = $this->readDotEnv();
+        $pathKeys = [
+            'HOST_PROJECT_PATH',
+            'DATA_PATH',
+            'NGINX_HOST_LOG_PATH',
+            'NGINX_SITES_PATH',
+            'NGINX_SSL_PATH',
+            'MYSQL_HOST_DATA_PATH',
+            'MYSQL_ENTRYPOINT_INITDB',
+        ];
+
+        $assignments = [];
+        foreach ($pathKeys as $key) {
+            $value = (string) ($env[$key] ?? '');
+            if ($this->isRelativeHostPath($value)) {
+                $assignments[] = $key . '=' . escapeshellarg($this->joinHostPath($hostProjectRoot, $value));
+            }
+        }
+
+        return $assignments === [] ? '' : implode(' ', $assignments) . ' ';
+    }
+
+    private function detectHostProjectRoot(): ?string
+    {
+        $hostname = gethostname();
+        if ($hostname === false || $hostname === '') {
+            return null;
+        }
+
+        $output = [];
+        $returnVar = 0;
+        exec('docker inspect ' . escapeshellarg($hostname) . ' --format ' . escapeshellarg('{{json .Mounts}}') . ' 2>/dev/null', $output, $returnVar);
+        if ($returnVar !== 0 || $output === []) {
+            return null;
+        }
+
+        $mounts = json_decode(implode("\n", $output), true);
+        if (!is_array($mounts)) {
+            return null;
+        }
+
+        foreach ($mounts as $mount) {
+            if (($mount['Destination'] ?? '') === $this->projectPath && isset($mount['Source'])) {
+                return (string) $mount['Source'];
+            }
+        }
+
+        return null;
+    }
+
+    private function isRelativeHostPath(string $path): bool
+    {
+        $path = trim($path);
+        if ($path === '' || str_contains($path, '${')) {
+            return false;
+        }
+
+        return !str_starts_with($path, '/')
+            && !preg_match('/^[a-zA-Z]:[\\\\\\/]/', $path);
+    }
+
+    private function joinHostPath(string $base, string $relative): string
+    {
+        $relative = preg_replace('/^\.[\\\\\\/]/', '', trim($relative)) ?? trim($relative);
+        $relative = trim($relative, "\\/");
+        if ($relative === '') {
+            return rtrim($base, "\\/");
+        }
+
+        $separator = preg_match('/^[a-zA-Z]:[\\\\\\/]/', $base) ? '\\' : '/';
+        $relative = str_replace(['\\', '/'], $separator, $relative);
+
+        return rtrim($base, "\\/") . $separator . $relative;
+    }
+
     private function runServiceCommand(string $service, string $command): string
     {
         return $this->runHostCommand('docker-compose exec -T ' . escapeshellarg($service) . ' sh -lc ' . escapeshellarg($command));
+    }
+
+    /**
+     * 启动项目相关服务。第一次启动时如果镜像还没构建，会自动补一次 build 再启动。
+     */
+    private function startProjectServices(array $services): string
+    {
+        $services = array_values(array_filter(array_map(
+            fn($service) => preg_replace('/[^a-zA-Z0-9_-]/', '', (string) $service),
+            $services
+        )));
+        if ($services === []) {
+            return '';
+        }
+
+        $serviceText = implode(' ', array_map('escapeshellarg', $services));
+
+        try {
+            return $this->runHostCommand("docker-compose up -d --no-build {$serviceText}");
+        } catch (\Throwable $e) {
+            $message = $e->getMessage();
+            if (!$this->shouldBuildAndRetry($message)) {
+                throw $e;
+            }
+
+            $buildOutput = $this->runHostCommand("docker-compose build {$serviceText}");
+            $upOutput = $this->runHostCommand("docker-compose up -d {$serviceText}");
+
+            return trim($buildOutput . "\n\n" . $upOutput);
+        }
+    }
+
+    private function shouldBuildAndRetry(string $message): bool
+    {
+        $message = strtolower($message);
+
+        return str_contains($message, 'no such image')
+            || str_contains($message, 'pull access denied')
+            || str_contains($message, 'failed to solve:');
     }
 
     private function friendlyCommandError(\Throwable $e): string
@@ -913,7 +1075,7 @@ class ProjectController extends AbstractController
             return $message . "\n\n没有找到项目容器配置。Hyperf 项目需要先用脚手架生成专属容器，或检查 docker-compose.yml。";
         }
         if (str_contains($message, 'No such image') || str_contains($message, 'pull access denied')) {
-            return $message . "\n\n镜像还没有构建好。请先在网络正常时执行 docker-compose build 对应服务。";
+            return $message . "\n\n镜像还没有构建好。请先确认网络可用，或者让面板先执行一次 build 再启动。";
         }
 
         return $message;

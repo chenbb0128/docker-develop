@@ -1112,7 +1112,9 @@
                     </div>
                     <select id="projectCommandPreset" onchange="applyProjectCommandPreset()">
                         <option value="">命令预设（可选）</option>
-                        <option value="php bin/hyperf.php start">Hyperf 启动</option>
+                        <option value='if php bin/hyperf.php list 2>/dev/null | grep -q "server:watch"; then php bin/hyperf.php server:watch; else php bin/hyperf.php start; fi'>Hyperf 热更新（推荐）</option>
+                        <option value="php bin/hyperf.php server:watch">Hyperf Watch</option>
+                        <option value="php bin/hyperf.php start">Hyperf Start</option>
                         <option value="php artisan octane:start --host=0.0.0.0">Laravel Octane</option>
                         <option value="php artisan serve --host=0.0.0.0">Laravel Serve</option>
                         <option value="go run .">Go Run</option>
@@ -2200,7 +2202,7 @@
 
             if (type === 'hyperf') {
                 if (reset || !document.getElementById('projectPort').value) document.getElementById('projectPort').value = '9502';
-                if (reset || !document.getElementById('projectCommand').value) document.getElementById('projectCommand').value = 'php bin/hyperf.php start';
+                if (reset || !document.getElementById('projectCommand').value) document.getElementById('projectCommand').value = 'if php bin/hyperf.php list 2>/dev/null | grep -q "server:watch"; then php bin/hyperf.php server:watch; else php bin/hyperf.php start; fi';
                 if (reset || !document.getElementById('projectLog').value) document.getElementById('projectLog').value = 'runtime/logs/hyperf.log';
                 if (reset || !hasServices) setProjectServices(defaultProjectServices('hyperf'));
                 else renderProjectServiceOptions(parseServiceText(document.getElementById('projectServices').value));
@@ -2537,8 +2539,14 @@
             appendTerminal(`$ project ${action} ${key}`, 'cmd');
             appendTerminal('正在执行，请稍候...', 'info');
             if (action === 'start') {
-                appendTerminal('如果项目镜像尚未构建，请先执行对应服务的 docker-compose build。', 'info');
+                appendTerminal('第一次启动时会自动构建镜像；如果项目缺少 vendor，会先执行 composer install。', 'info');
             }
+
+            const startedAt = Date.now();
+            const progressTimer = setInterval(() => {
+                const seconds = Math.floor((Date.now() - startedAt) / 1000);
+                appendTerminal(`仍在执行，已等待 ${seconds} 秒...`, 'info');
+            }, 15000);
 
             try {
                 const data = await api(`/projects/${key}/${action}`, { method: 'POST' });
@@ -2573,6 +2581,8 @@
 
                 appendTerminal(message, 'error');
                 setTerminalStatus('错误', false);
+            } finally {
+                clearInterval(progressTimer);
             }
         }
         const startProject = key => runProjectAction(key, 'start');

@@ -88,11 +88,9 @@ services:
       - frontend
       - backend
 
+# BEGIN Hyperf project: hyperf-serviceapi
 
-
-# BEGIN Hyperf project: hyperf-classmate
-
-  hyperf-classmate:
+  hyperf-serviceapi:
     build:
       context: ./services/workspace
       args:
@@ -115,8 +113,8 @@ services:
         - PGID=${WORKSPACE_PGID}
         - TZ=${TIMEZONE}
         - CONTAINER_PROJECT_PATH=${CONTAINER_PROJECT_PATH}
-    working_dir: '/develop/Hua/Projects/ClassMate/ClassMateServer'
-    command: sh -lc 'php bin/hyperf.php start'
+    working_dir: '/develop/Php/ServiceApi'
+    command: sh -lc 'git config --global --add safe.directory "$$PWD" 2>/dev/null || true; if [ -f composer.json ] && [ ! -f vendor/autoload.php ]; then composer install --no-interaction --prefer-dist; fi; php bin/hyperf.php server:watch'
     volumes:
       - ${HOST_PROJECT_PATH}:${CONTAINER_PROJECT_PATH}
     extra_hosts:
@@ -129,7 +127,7 @@ services:
     networks:
       - frontend
       - backend
-# END Hyperf project: hyperf-classmate
+# END Hyperf project: hyperf-serviceapi
 
 #---------------------------------------------
 # Docker 管理面板 (Hyperf + Swoole)
@@ -191,7 +189,7 @@ services:
         - COMPOSER_REPO_PACKAGIST=${WORKSPACE_COMPOSER_REPO_PACKAGIST}
     volumes:
       - ${HOST_PROJECT_PATH}:${CONTAINER_PROJECT_PATH}
-      - C:/Develop/Docker/docker-develop/services/php-fpm/php${PHP_VERSION}.ini:/usr/local/etc/php/php.ini
+      - ./services/php-fpm/php${PHP_VERSION}.ini:/usr/local/etc/php/php.ini
       - /var/run/docker.sock:/var/run/docker.sock
       - ./docker-panel:/var/www/docker-panel
 
@@ -228,7 +226,7 @@ services:
         - COMPOSER_REPO_PACKAGIST=${WORKSPACE_COMPOSER_REPO_PACKAGIST}
     volumes:
       - ${HOST_PROJECT_PATH}:${CONTAINER_PROJECT_PATH}
-      - C:/Develop/Docker/docker-develop/services/php-fpm/php7.3.ini:/usr/local/etc/php/php.ini
+      - ./services/php-fpm/php7.3.ini:/usr/local/etc/php/php.ini
 
 ### PHP 8.0 #########################################
   php80-fpm:
@@ -263,7 +261,7 @@ services:
         - COMPOSER_REPO_PACKAGIST=${WORKSPACE_COMPOSER_REPO_PACKAGIST}
     volumes:
       - ${HOST_PROJECT_PATH}:${CONTAINER_PROJECT_PATH}
-      - C:/Develop/Docker/docker-develop/services/php-fpm/php8.0.ini:/usr/local/etc/php/php.ini
+      - ./services/php-fpm/php8.0.ini:/usr/local/etc/php/php.ini
 
 ### PHP 8.1 #########################################
   php81-fpm:
@@ -298,7 +296,7 @@ services:
         - COMPOSER_REPO_PACKAGIST=${WORKSPACE_COMPOSER_REPO_PACKAGIST}
     volumes:
       - ${HOST_PROJECT_PATH}:${CONTAINER_PROJECT_PATH}
-      - C:/Develop/Docker/docker-develop/services/php-fpm/php8.1.ini:/usr/local/etc/php/php.ini
+      - ./services/php-fpm/php8.1.ini:/usr/local/etc/php/php.ini
 
 ### PHP 8.3 #########################################
   php83-fpm:
@@ -333,7 +331,7 @@ services:
         - COMPOSER_REPO_PACKAGIST=${WORKSPACE_COMPOSER_REPO_PACKAGIST}
     volumes:
       - ${HOST_PROJECT_PATH}:${CONTAINER_PROJECT_PATH}
-      - C:/Develop/Docker/docker-develop/services/php-fpm/php8.3.ini:/usr/local/etc/php/php.ini
+      - ./services/php-fpm/php8.3.ini:/usr/local/etc/php/php.ini
 
 #---------------------------------------------
 # Go Development Environment
