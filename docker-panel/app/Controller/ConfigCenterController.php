@@ -46,11 +46,11 @@ class ConfigCenterController extends AbstractController
             'applyAction' => 'none',
         ],
         'projects.json' => [
-            'description' => '项目启动器配置',
+            'description' => '项目启动器本机配置（自动生成）',
             'group' => '项目配置',
             'risk' => 'medium',
             'validator' => 'json',
-            'nextAction' => '保存后刷新项目列表即可。',
+            'nextAction' => '保存后刷新项目列表即可；文件缺失时面板会自动生成。',
             'applyAction' => 'refresh-projects',
         ],
         'projects.example.json' => [
@@ -484,7 +484,7 @@ class ConfigCenterController extends AbstractController
 
     private function validateNginx()
     {
-        $result = $this->runCommand('docker exec docker-develop-nginx-1 nginx -t 2>&1');
+        $result = $this->runCommand('cd ' . escapeshellarg($this->projectPath) . ' && unset PHP_VERSION && docker-compose exec -T nginx nginx -t 2>&1');
         if ($result['code'] === 0) {
             return $this->success(['output' => $result['output']], 'Nginx 配置验证通过');
         }

@@ -1,73 +1,90 @@
-# 项目启动器使用说明
+# Projects 项目启动器
 
-这个面板的推荐用法是：
+Projects 用来把业务项目接入本地 Docker Develop 环境。它只写环境配置和管理卡片，不会修改业务项目源码。
 
-- Laravel / 普通 PHP 项目共用 `nginx + php-fpm` 容器。
-- Hyperf 项目使用一个项目一个独立容器，例如 `hyperf-order-api`。
-- `workspace` 只作为备用工具箱；项目命令优先在项目配置的 PHP 服务里执行。
-
-也可以用根目录向导快速写入项目配置：
+推荐优先使用面板首页的 `新增项目`，命令行向导作为备用入口：
 
 ```powershell
 .\scaffold.bat
 ```
 
-## Hyperf 项目
+## 配置文件
 
-1. 确认 `.env` 里的项目挂载路径，例如：
+- `projects.example.json`：仓库默认示例，新 clone 时用于生成初始项目卡片。
+- `projects.json`：本机运行状态文件，面板会自动生成，已经从仓库中移除并加入 `.gitignore`。
+- `docker-compose.yml`：Hyperf 项目的专属容器配置会写入带 `BEGIN/END Hyperf project` 标记的 service block。
+
+如果 `projects.json` 丢失，面板会先加载 `projects.example.json`，再合并 `docker-compose.yml` 里带标记的 Hyperf 项目。
+
+## 路径规则
+
+面板里建议填写容器路径，例如：
+
+```text
+/develop/company/order-api
+```
+
+`.env` 负责把宿主机项目根目录映射到容器：
 
 ```env
-HOST_PROJECT_PATH=D:/Projects
 CONTAINER_PROJECT_PATH=/develop
-WORKSPACE_INSTALL_SWOOLE=true
 ```
 
-2. Windows 项目目录：
+不同平台的 `HOST_PROJECT_PATH` 示例：
+
+```env
+# Windows PowerShell / CMD
+HOST_PROJECT_PATH=D:\Develop
+
+# WSL 访问 Windows D 盘
+HOST_PROJECT_PATH=/mnt/d/Develop
+
+# WSL Linux 文件系统
+HOST_PROJECT_PATH=/home/you/Develop
+
+# macOS
+HOST_PROJECT_PATH=/Users/you/Develop
+```
+
+## Laravel / 普通 PHP-FPM / 静态项目
+
+这类项目共用 `nginx + php*-fpm + redis`。新增项目时面板可以同时生成：
+
+- 项目卡片
+- Nginx site 配置
+- Nginx 端口映射
+
+PHP 8.3 是默认推荐版本；旧项目再单独选择 `php81-fpm`、`php80-fpm` 或 `php73-fpm`。
+
+## Hyperf 项目
+
+Hyperf 使用“一项目一容器”。新增 Hyperf 项目时，面板会在 `docker-compose.yml` 里生成专属 service，例如 `hyperf-order-api`。
+
+默认启动命令会自动判断是否安装 watcher：
+
+```bash
+if php bin/hyperf.php list 2>/dev/null | grep -q "server:watch"; then php bin/hyperf.php server:watch; else php bin/hyperf.php start; fi
+```
+
+启动前还会自动处理：
+
+- `git safe.directory`，避免 Windows/WSL 挂载目录触发 Git ownership 警告。
+- 项目有 `composer.json` 但缺少 `vendor/autoload.php` 时自动执行 `composer install`。
+- Composer 默认使用阿里云源。
+
+Hyperf 项目建议监听容器内 `0.0.0.0:9501`，宿主机用项目端口访问，例如：
 
 ```text
-D:/Projects/order-api
+http://localhost:9502
 ```
 
-3. 面板项目路径填写容器内路径：
+## 常用操作
 
-```text
-/develop/order-api
-```
-
-4. 推荐配置：
-
-```json
-{
-  "key": "order-api",
-  "name": "Order API",
-  "type": "hyperf",
-  "path": "/develop/order-api",
-  "port": 9502,
-  "php": "php83-fpm",
-  "service": "hyperf-order-api",
-  "services": ["hyperf-order-api", "redis"],
-  "command": "if php bin/hyperf.php list 2>/dev/null | grep -q \"server:watch\"; then php bin/hyperf.php server:watch; else php bin/hyperf.php start; fi",
-  "log": "runtime/logs/hyperf.log",
-  "url": "http://localhost:9502"
-}
-```
-
-推荐用 `.\scaffold.bat` 创建 Hyperf 项目，它会自动写入 `projects.json`，并在 `docker-compose.yml` 里生成项目专属 service。
-
-Hyperf 项目容器默认按 `宿主机端口:容器内端口` 映射。推荐让 Hyperf 在容器内监听 `0.0.0.0:9501`，例如宿主机 `9502` 映射到容器内 `9501`，这样宿主机通过 `http://localhost:9502` 访问。
-
-## 常用按钮
-
-- `Start`: 启动项目配置里的服务。Hyperf 会启动它自己的项目容器；本地开发默认优先使用 `server:watch` 热更新，项目未安装 watcher 时自动回退到 `start`；如果缺少 `vendor/autoload.php` 会先自动执行 `composer install`。
-- `Stop`: 停止 Hyperf 项目的专属容器。
-- `Restart`: 重启 Hyperf 项目的专属容器和依赖服务。
-- `PHP`: 在项目目录执行 `php -v`。
-- `Composer`: 在项目目录执行 `composer install`。
-- `Migrate`: Hyperf 执行 `php bin/hyperf.php migrate`，Laravel 执行 `php artisan migrate`。
-- `DI`: Hyperf 执行 `php bin/hyperf.php di:init-proxy`。
-- `Logs`: 查看 Hyperf 项目容器日志。
-- `Run...`: 在项目目录执行自定义命令。
-
-## 普通 Laravel / PHP-FPM 项目
-
-普通 Web 项目仍然走 `nginx + php-fpm`。先在 `Sites` 面板里创建 Nginx 站点，再在 `Projects` 里添加项目卡片。Projects 路径填写项目根目录，命令会优先在项目配置的 `php` 服务里执行；只有没配置 PHP 服务时才回退到 `workspace`。
+- `启动`：启动项目依赖服务；Hyperf 会启动专属容器。
+- `停止`：停止 Hyperf 专属容器；共享 PHP-FPM 项目不会停掉公共容器。
+- `重启`：重启项目相关服务。
+- `PHP 版本`：在项目目录执行 `php -v`。
+- `Composer`：在项目目录执行 `composer install`。
+- `迁移`：Hyperf 执行 `php bin/hyperf.php migrate`，Laravel 执行 `php artisan migrate`。
+- `日志`：查看 Hyperf 项目容器日志。
+- `删除环境`：只清理 Docker/Nginx/面板配置，不删除项目源码。

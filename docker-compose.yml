@@ -88,47 +88,6 @@ services:
       - frontend
       - backend
 
-# BEGIN Hyperf project: hyperf-serviceapi
-
-  hyperf-serviceapi:
-    build:
-      context: ./services/workspace
-      args:
-        - CHANGE_SOURCE=${CHANGE_SOURCE}
-        - UBUNTU_VERSION=${UBUNTU_VERSION}
-        - PHP_VERSION=8.3
-        - INSTALL_XDEBUG=${WORKSPACE_INSTALL_XDEBUG}
-        - XDEBUG_PORT=${WORKSPACE_XDEBUG_PORT}
-        - INSTALL_MONGO=${WORKSPACE_INSTALL_MONGO}
-        - INSTALL_PHPREDIS=${WORKSPACE_INSTALL_PHPREDIS}
-        - INSTALL_SWOOLE=${WORKSPACE_INSTALL_SWOOLE}
-        - INSTALL_COMPOSER=${WORKSPACE_INSTALL_COMPOSER}
-        - COMPOSER_VERSION=${WORKSPACE_COMPOSER_VERSION}
-        - COMPOSER_REPO_PACKAGIST=${WORKSPACE_COMPOSER_REPO_PACKAGIST}
-        - INSTALL_NODE=${WORKSPACE_INSTALL_NODE}
-        - NODE_VERSION=${WORKSPACE_NODE_VERSION}
-        - INSTALL_SUPERVISOR=${WORKSPACE_INSTALL_SUPERVISOR}
-        - SHELL_OH_MY_ZSH=${SHELL_OH_MY_ZSH}
-        - PUID=${WORKSPACE_PUID}
-        - PGID=${WORKSPACE_PGID}
-        - TZ=${TIMEZONE}
-        - CONTAINER_PROJECT_PATH=${CONTAINER_PROJECT_PATH}
-    working_dir: '/develop/Php/ServiceApi'
-    command: sh -lc 'git config --global --add safe.directory "$$PWD" 2>/dev/null || true; if [ -f composer.json ] && [ ! -f vendor/autoload.php ]; then composer install --no-interaction --prefer-dist; fi; php bin/hyperf.php server:watch'
-    volumes:
-      - ${HOST_PROJECT_PATH}:${CONTAINER_PROJECT_PATH}
-    extra_hosts:
-      - "dockerhost:${DOCKER_HOST_IP}"
-    ports:
-      - "9502:9501"
-    depends_on:
-      - redis
-    tty: true
-    networks:
-      - frontend
-      - backend
-# END Hyperf project: hyperf-serviceapi
-
 #---------------------------------------------
 # Docker 管理面板 (Hyperf + Swoole)
 #---------------------------------------------
@@ -138,6 +97,10 @@ services:
     build:
       context: ./docker-panel
       dockerfile: Dockerfile
+      args:
+        - DOCKER_PANEL_PHP_IMAGE=${DOCKER_PANEL_PHP_IMAGE:-php:8.3-cli-alpine}
+        - DOCKER_PANEL_COMPOSER_IMAGE=${DOCKER_PANEL_COMPOSER_IMAGE:-composer:2}
+        - COMPOSER_REPO_PACKAGIST=${WORKSPACE_COMPOSER_REPO_PACKAGIST}
     volumes:
       - ./docker-panel:/var/www/docker-panel
       - /var/run/docker.sock:/var/run/docker.sock
@@ -156,7 +119,7 @@ services:
 # PHP-FPM 多版本支持
 #---------------------------------------------
 
-### PHP 7.3 (默认版本) #############################
+### 默认 PHP (${PHP_VERSION}) #############################
   php-fpm:
     <<: *php-fpm-common
     build:
@@ -382,10 +345,14 @@ services:
         - CHANGE_SOURCE=${CHANGE_SOURCE}
         - PHP_UPSTREAM_CONTAINER=${NGINX_PHP_UPSTREAM_CONTAINER}
         - PHP_UPSTREAM_PORT=${NGINX_PHP_UPSTREAM_PORT}
+    environment:
+      - PHP_UPSTREAM_CONTAINER=${NGINX_PHP_UPSTREAM_CONTAINER}
+      - PHP_UPSTREAM_PORT=${NGINX_PHP_UPSTREAM_PORT}
     volumes:
       - ${NGINX_HOST_LOG_PATH}:/var/log/nginx
       - ${NGINX_SITES_PATH}:/etc/nginx/sites
       - ${NGINX_SSL_PATH}:/etc/nginx/ssl
+      - ./services/nginx/startup.sh:/opt/startup.sh
       - ${HOST_PROJECT_PATH}:${CONTAINER_PROJECT_PATH}
       - ./docker-panel:/var/www/docker-panel
     ports:
@@ -395,7 +362,7 @@ services:
       - "7002:7002"
       - "8002:8002"
     depends_on:
-      - php-fpm
+      - php83-fpm
       - redis
     networks:
       - frontend

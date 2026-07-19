@@ -10,6 +10,9 @@ use Hyperf\HttpServer\Annotation\RequestMapping;
 #[Controller]
 class ProjectDeleteController extends AbstractController
 {
+    private const HYPERF_DEV_COMMAND = 'if php bin/hyperf.php list 2>/dev/null | grep -q "server:watch"; then php bin/hyperf.php server:watch; else php bin/hyperf.php start; fi';
+    private const HYPERF_STARTUP_PREPARE = 'git config --global --add safe.directory "$$PWD" 2>/dev/null || true; if [ -f composer.json ] && [ ! -f vendor/autoload.php ]; then composer install --no-interaction --prefer-dist; fi';
+
     private string $projectPath = '/var/www/docker-develop';
     private string $configFile = '/var/www/docker-develop/projects.json';
 
@@ -130,7 +133,11 @@ class ProjectDeleteController extends AbstractController
     private function loadProjects(): array
     {
         if (!file_exists($this->configFile)) {
-            return [];
+            $projects = $this->loadProjectsFromCompose();
+            if ($projects !== []) {
+                $this->saveProjects($projects);
+            }
+            return $projects;
         }
 
         $payload = json_decode((string) file_get_contents($this->configFile), true);
@@ -140,6 +147,121 @@ class ProjectDeleteController extends AbstractController
 
         $projects = $payload['projects'] ?? [];
         return is_array($projects) ? array_values(array_filter($projects, 'is_array')) : [];
+    }
+
+    private function loadProjectsFromCompose(): array
+    {
+        $composeFile = $this->projectPath . '/docker-compose.yml';
+        if (!file_exists($composeFile)) {
+            return [];
+        }
+
+        $content = (string) file_get_contents($composeFile);
+        if (!preg_match_all('/# BEGIN Hyperf project:\s*([a-zA-Z0-9_-]+)\R(.*?)# END Hyperf project:\s*\1/s', $content, $matches, PREG_SET_ORDER)) {
+            return [];
+        }
+
+        $projects = [];
+        foreach ($matches as $match) {
+            $project = $this->projectFromHyperfComposeBlock($match[1], $match[2]);
+            if ($project !== null) {
+                $projects[] = $project;
+            }
+        }
+
+        return $projects;
+    }
+
+    private function projectFromHyperfComposeBlock(string $service, string $block): ?array
+    {
+        $path = $this->composeScalar($block, 'working_dir');
+        if ($path === '') {
+            return null;
+        }
+
+        $pathName = basename(rtrim(str_replace('\\', '/', $path), '/'));
+        $fallbackKey = preg_replace('/^hyperf-/', '', $service) ?: $service;
+        $key = preg_replace('/[^a-zA-Z0-9_-]/', '-', $pathName !== '' ? $pathName : $fallbackKey) ?: $fallbackKey;
+        $port = $this->composeHyperfPort($block) ?? 9502;
+        $php = $this->phpVersionToService($this->composePhpVersion($block));
+        $command = $this->composeCommand($block);
+
+        return [
+            'key' => $key,
+            'name' => $key,
+            'type' => 'hyperf',
+            'path' => $path,
+            'port' => $port,
+            'php' => $php,
+            'service' => $service,
+            'services' => [$service, 'redis'],
+            'command' => $command !== '' ? $command : self::HYPERF_DEV_COMMAND,
+            'log' => 'runtime/logs/hyperf.log',
+            'url' => 'http://localhost:' . $port,
+        ];
+    }
+
+    private function composeScalar(string $block, string $key): string
+    {
+        if (!preg_match('/^\s+' . preg_quote($key, '/') . ':\s*(.+?)\s*$/m', $block, $match)) {
+            return '';
+        }
+
+        return $this->unquoteComposeValue($match[1]);
+    }
+
+    private function composeCommand(string $block): string
+    {
+        $command = $this->composeScalar($block, 'command');
+        if (str_starts_with($command, 'sh -lc ')) {
+            $command = $this->unquoteComposeValue(substr($command, 7));
+        }
+
+        $prepare = self::HYPERF_STARTUP_PREPARE . '; ';
+        if (str_starts_with($command, $prepare)) {
+            $command = substr($command, strlen($prepare));
+        }
+
+        return trim($command);
+    }
+
+    private function composeHyperfPort(string $block): ?int
+    {
+        if (preg_match('/^\s+-\s*["\']?(\d+):9501["\']?\s*$/m', $block, $match)) {
+            return (int) $match[1];
+        }
+
+        return null;
+    }
+
+    private function composePhpVersion(string $block): string
+    {
+        return preg_match('/-\s*PHP_VERSION=([0-9.]+)/', $block, $match) ? $match[1] : '8.3';
+    }
+
+    private function phpVersionToService(string $version): string
+    {
+        return match ($version) {
+            '7.3' => 'php73-fpm',
+            '8.0' => 'php80-fpm',
+            '8.1' => 'php81-fpm',
+            default => 'php83-fpm',
+        };
+    }
+
+    private function unquoteComposeValue(string $value): string
+    {
+        $value = trim($value);
+        if ($value === '') {
+            return '';
+        }
+
+        $quote = $value[0];
+        if (($quote === "'" || $quote === '"') && str_ends_with($value, $quote)) {
+            $value = substr($value, 1, -1);
+        }
+
+        return str_replace("''", "'", $value);
     }
 
     private function saveProjects(array $projects): void

@@ -70,7 +70,7 @@ class TerminalController extends AbstractController
             'php80' => 'nginx php80-fpm redis',
             'php81' => 'nginx php81-fpm redis',
             'php83' => 'nginx php83-fpm redis',
-            'minimal' => 'nginx php-fpm redis',
+            'minimal' => 'nginx php83-fpm redis',
             'go' => 'go redis',
         ];
 

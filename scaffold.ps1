@@ -1,4 +1,4 @@
-﻿param(
+param(
     [Parameter(Position = 0)]
     [string] $Type = '',
 
@@ -459,7 +459,7 @@ function Read-WithDefault {
 
 function Start-InteractiveWizard {
     Write-Host ""
-    Write-Host "Docker Develop 新增网站向导"
+    Write-Host "Docker Develop 新增项目环境向导"
     Write-Host "============================================"
     Write-Host ""
     Write-Host "请选择项目类型："
@@ -482,7 +482,7 @@ function Start-InteractiveWizard {
 
     $script:Key = Read-Required "项目标识，例如 youquangou"
     $script:Name = Read-WithDefault "项目名称" $script:Key
-    $script:Path = Read-Required "项目路径，可以填写 Windows 路径或 /develop 路径"
+    $script:Path = Read-Required "项目路径，可以填写宿主机路径或 /develop 容器路径"
 
     if ($script:Type -eq "hyperf") {
         $script:Port = [int] (Read-WithDefault "访问端口" "9502")

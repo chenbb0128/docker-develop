@@ -889,6 +889,7 @@
         .project-name { color: var(--ink); font-size: 16px; font-weight: 800; word-break: break-word; }
         .project-key { color: var(--gray-500); font-size: 12px; margin-top: 3px; word-break: break-all; }
         .project-path { color: var(--gray-600); font-size: 12px; line-height: 1.55; word-break: break-all; margin-top: 12px; padding: 10px; background: #fafafa; border: 1px solid var(--soft-line); border-radius: 0; }
+        .project-note { color: var(--gray-600); font-size: 12px; line-height: 1.55; margin-top: 8px; padding: 10px; border-left: 3px solid var(--line); background: #fff; }
         .project-meta-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
         .project-meta-tile { border: 1px solid var(--line); border-radius: 0; padding: 9px; background: #fff; }
         .project-meta-tile span { display: block; color: var(--gray-500); font-size: 11px; font-weight: 700; }
@@ -993,18 +994,23 @@
                     <h2>本地开发环境控制台</h2>
                     <p>集中查看 Docker、项目、站点和配置状态，常用操作从这里进入。</p>
                     <div class="setup-list">
-                        <button class="setup-item" onclick="openNewProjectForm()">
+                        <button class="setup-item" onclick="startDemoEnvironment()">
                             <span class="setup-index">1</span>
+                            <span class="setup-copy"><strong>启动 Demo</strong><small>启动 Nginx + PHP 8.3 + Redis 并打开 localhost</small></span>
+                            <span class="setup-arrow">&gt;</span>
+                        </button>
+                        <button class="setup-item" onclick="openNewProjectForm()">
+                            <span class="setup-index">2</span>
                             <span class="setup-copy"><strong>新增项目</strong><small>接入 Laravel / Hyperf / Go 项目</small></span>
                             <span class="setup-arrow">&gt;</span>
                         </button>
                         <button class="setup-item" onclick="showSitePanel()">
-                            <span class="setup-index">2</span>
+                            <span class="setup-index">3</span>
                             <span class="setup-copy"><strong>管理站点</strong><small>创建或检查 Nginx 本地站点</small></span>
                             <span class="setup-arrow">&gt;</span>
                         </button>
                         <button class="setup-item" onclick="runHealthCheck()">
-                            <span class="setup-index">3</span>
+                            <span class="setup-index">4</span>
                             <span class="setup-copy"><strong>检查环境</strong><small>确认 Docker、容器和配置接口状态</small></span>
                             <span class="setup-arrow">&gt;</span>
                         </button>
@@ -1093,7 +1099,7 @@
                         <option value="php73-fpm">PHP 7.3</option>
                         <option value="php-fpm">默认 PHP</option>
                     </select>
-                    <input id="projectPath" placeholder="项目路径，例如 /develop/demo 或 /develop/ServiceApi">
+                    <input id="projectPath" placeholder="项目路径，例如 /develop/demo 或 /develop/company/order-api">
                     <input id="projectPort" type="number" min="1024" max="65535" placeholder="访问端口，例如 9502">
                     <div class="project-field project-field-wide">
                         <label>服务（可多选）</label>
@@ -1325,7 +1331,7 @@
                             <div class="site-field" id="domainInputDiv" style="display:none">
                                 <label>本地域名</label>
                                 <input type="text" id="siteServerName" placeholder="classmate.test" oninput="updateAccessPreview()">
-                                <div class="site-help">需要把 127.0.0.1 域名 加到 Windows hosts。</div>
+                                <div class="site-help">需要把 127.0.0.1 域名 加到本机 hosts。</div>
                             </div>
                         </div>
                         <div class="site-preview-card">
@@ -1592,14 +1598,15 @@
         async function runHealthCheck() {
             const box = document.getElementById('healthCheckList');
             if (!box) return;
-            box.innerHTML = renderHealthItem({ title: '正在检查', status: 'info', badge: '运行中', message: '正在读取容器、项目、站点和配置中心状态...' });
+            box.innerHTML = renderHealthItem({ title: '正在检查', status: 'info', badge: '运行中', message: '正在读取容器、项目、站点、本机配置和配置中心状态...' });
 
             const checks = [];
-            const [containersResult, projectsResult, sitesResult, presetsResult, configCenterResult] = await Promise.allSettled([
+            const [containersResult, projectsResult, sitesResult, presetsResult, envDoctorResult, configCenterResult] = await Promise.allSettled([
                 api('/containers'),
                 api('/projects'),
                 api('/sites'),
                 api('/env/presets'),
+                api('/env/doctor'),
                 api('/config/center/files'),
             ]);
 
@@ -1650,6 +1657,12 @@
                 checks.push({ title: '快捷环境', status: 'error', badge: '失败', message: presetsResult.reason?.message || '无法读取快捷环境。', suggestion: '检查环境预设接口或 docker-panel 容器状态。' });
             }
 
+            if (envDoctorResult.status === 'fulfilled') {
+                (envDoctorResult.value.checks || []).forEach(item => checks.push(item));
+            } else {
+                checks.push({ title: '本机配置', status: 'warn', badge: '未加载', message: envDoctorResult.reason?.message || '无法读取本机配置体检接口。', suggestion: '重启 docker-panel 后再检查。' });
+            }
+
             if (configCenterResult.status === 'fulfilled') {
                 const files = configCenterResult.value.files || [];
                 updateHeroStatus({ config: '已就绪' });
@@ -1675,7 +1688,9 @@
                     ${suggestion}
                 </div>
             `;
-        }        async function containerAction(id, action) {
+        }
+
+        async function containerAction(id, action) {
             try {
                 await api(`/containers/${id}/${action}`, { method: 'POST' });
                 setTimeout(loadContainers, 500);
@@ -1756,6 +1771,13 @@
                 </div>
             `;
         }
+        async function startDemoEnvironment() {
+            const ok = await startPreset('minimal');
+            if (ok) {
+                setTimeout(() => window.open('http://localhost', '_blank'), 1200);
+            }
+        }
+
         async function startPreset(key) {
             // 显示终端弹窗
             showTerminal(`启动环境: ${key}`);
@@ -1780,13 +1802,16 @@
                         loadPresets();
                         loadContainers();
                     }, 1000);
+                    return true;
                 } else {
                     appendTerminal('\n❌ 启动失败: ' + (data.error || ''), 'error');
                     setTerminalStatus('失败', false);
+                    return false;
                 }
             } catch (e) {
                 appendTerminal('❌ 请求失败: ' + e.message, 'error');
                 setTerminalStatus('错误', false);
+                return false;
             }
         }
 
@@ -1946,6 +1971,7 @@
                         <span class="status-badge ${active ? 'running' : 'stopped'}">${active ? '已就绪' : `服务 ${servicesText}`}</span>
                     </div>
                     <div class="project-path">${escapeHtml(project.path || '未填写项目路径')}</div>
+                    ${project.notes ? `<div class="project-note">${escapeHtml(project.notes)}</div>` : ''}
                     <div class="project-meta-grid">
                         <div class="project-meta-tile"><span>项目类型</span><strong>${escapeHtml(projectTypeLabel(project.type))}</strong></div>
                         <div class="project-meta-tile"><span>运行方式</span><strong>${escapeHtml(runtimeText)}</strong></div>
@@ -2783,7 +2809,7 @@
                 hint.textContent = validPort ? (exposed ? '该端口已经暴露，创建后重载 Nginx 即可。' : '该端口尚未暴露，创建时会尝试写入 docker-compose.yml，之后需要重启 Nginx 容器。') : '端口需要在 1024 到 65535 之间。';
                 next.textContent = validPort ? (exposed ? '创建后点击“重载 Nginx”即可访问。' : '创建后点击“重启 Nginx”让新端口映射生效。') : '请先填写合法端口。';
             } else {
-                next.textContent = '创建后复制 hosts 命令，并以管理员身份写入 Windows hosts。';
+                next.textContent = '创建后复制 hosts 命令，并写入本机 hosts。';
             }
             if (!root) next.textContent += ' 记得填写站点根目录。';
         }
@@ -2882,8 +2908,8 @@
 
         async function reloadNginx() {
             showTerminal('重载 Nginx');
-            appendTerminal('$ docker exec docker-develop-nginx-1 nginx -t', 'cmd');
-            appendTerminal('$ docker exec docker-develop-nginx-1 nginx -s reload', 'cmd');
+            appendTerminal('$ docker-compose exec -T nginx nginx -t', 'cmd');
+            appendTerminal('$ docker-compose exec -T nginx nginx -s reload', 'cmd');
             appendTerminal('正在验证并重载 Nginx...', 'info');
             try {
                 const data = await api('/sites/reload-nginx', { method: 'POST' });

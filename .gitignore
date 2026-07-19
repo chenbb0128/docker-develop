@@ -38,6 +38,7 @@ Desktop.ini
 # ===================================
 .env
 !.env.example
+/projects.json
 !projects.example.json
 
 # ===================================
@@ -51,6 +52,9 @@ Desktop.ini
 /data/
 !/data/
 !/data/.gitkeep
+/data/.docker-develop-initialized
+!/data/demo/
+!/data/demo/**
 /cache/
 !/cache/
 !/cache/.gitkeep

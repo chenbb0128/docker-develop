@@ -241,13 +241,15 @@ class SiteController extends AbstractController
             return $this->error('未登录', 401);
         }
 
-        exec('docker exec docker-develop-nginx-1 nginx -t 2>&1', $testOutput, $testCode);
+        $testCmd = 'cd ' . escapeshellarg($this->projectPath) . ' && unset PHP_VERSION && docker-compose exec -T nginx nginx -t 2>&1';
+        exec($testCmd, $testOutput, $testCode);
 
         if ($testCode !== 0) {
             return $this->error('Nginx 配置有误: ' . implode("\n", $testOutput), 400);
         }
 
-        exec('docker exec docker-develop-nginx-1 nginx -s reload 2>&1', $output, $returnVar);
+        $reloadCmd = 'cd ' . escapeshellarg($this->projectPath) . ' && unset PHP_VERSION && docker-compose exec -T nginx nginx -s reload 2>&1';
+        exec($reloadCmd, $output, $returnVar);
 
         if ($returnVar === 0) {
             return $this->success([], 'Nginx 已重新加载');

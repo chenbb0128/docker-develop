@@ -1,29 +1,15 @@
 {
   "projects": [
     {
-      "key": "demo-hyperf",
-      "name": "Demo Hyperf API",
-      "type": "hyperf",
-      "path": "/develop/demo-hyperf",
+      "key": "demo-php",
+      "name": "Demo PHP 8.3",
+      "type": "php-fpm",
+      "path": "/develop/demo",
       "php": "php83-fpm",
-      "port": 9502,
-      "service": "hyperf-demo-hyperf",
-      "services": ["hyperf-demo-hyperf", "redis"],
-      "command": "if php bin/hyperf.php list 2>/dev/null | grep -q \"server:watch\"; then php bin/hyperf.php server:watch; else php bin/hyperf.php start; fi",
-      "log": "runtime/logs/hyperf.log",
-      "url": "http://localhost:9502",
-      "notes": "Hyperf uses one dedicated container per project. Host port 9502 maps to container port 9501 by default."
-    },
-    {
-      "key": "demo-laravel",
-      "name": "Demo Laravel App",
-      "type": "laravel",
-      "path": "/develop/demo-laravel",
-      "php": "php83-fpm",
-      "port": 8080,
+      "port": 80,
       "services": ["nginx", "php83-fpm", "redis"],
-      "url": "http://localhost:8080",
-      "notes": "Projects path is the project root. The Nginx site root should point to /develop/demo-laravel/public."
+      "url": "http://localhost",
+      "notes": "内置 demo 项目，用来验证 Nginx、PHP-FPM 和路径映射。默认站点 root 指向 /develop/demo/public。"
     }
   ]
 }
