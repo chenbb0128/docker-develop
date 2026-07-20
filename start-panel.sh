@@ -101,7 +101,14 @@ fi
 
 printf '\n[4/6] Starting docker-panel service...\n'
 if ! "${COMPOSE_CMD[@]}" up -d docker-panel; then
-    printf '\nFailed to start docker-panel. Recent docker-panel logs:\n'
+    printf '\nFailed to start docker-panel.\n'
+    printf '\nCommon cause:\n'
+    printf 'Docker cannot pull base images from Docker Hub, for example php:8.3-cli-alpine or composer:2.\n'
+    printf '\nFix:\n'
+    printf '1. Configure Docker Engine registry-mirrors in Docker Desktop or Docker daemon, then restart Docker.\n'
+    printf '2. Or set DOCKER_PANEL_PHP_IMAGE and DOCKER_PANEL_COMPOSER_IMAGE in .env to a reachable image proxy.\n'
+    printf '3. Rerun bash ./start-panel.sh.\n\n'
+    printf 'Recent docker-panel logs:\n'
     "${COMPOSE_CMD[@]}" logs --tail=80 docker-panel || true
     exit 1
 fi

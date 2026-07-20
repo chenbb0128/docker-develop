@@ -1,8 +1,28 @@
 # Docker Develop 本地开发环境
 
-这是一个面向 Windows、WSL 和 macOS 本地开发的 Docker 工作环境，用来统一管理 PHP/Laravel、Hyperf、Go、Nginx、Redis 和本地可视化面板。
+Docker Develop 是一套面向团队本地开发的 Docker 工作台，用来统一管理 PHP/Laravel、Hyperf、Go、Nginx、Redis 和本地项目运行环境。
 
-它的定位是个人本地开发工具，不建议暴露到局域网或公网，因为面板可以操作 Docker 容器、Nginx 站点和配置文件。当前 `docker-panel` 默认绑定到 `127.0.0.1:9501`，只给本机访问。
+它的目标很直接：新成员拉下代码后，启动 Docker，然后执行一个命令就能打开面板、接入项目、启动服务和查看环境状态。默认配置已经面向国内开发网络做了优化，包括 PHP 8.3、Composer 阿里云源、Go Proxy，以及 Windows / WSL / macOS 三种本地运行方式。
+
+当前 `docker-panel` 默认绑定到 `127.0.0.1:9501`，只给本机访问。面板可以操作 Docker 容器、Nginx 站点和配置文件，因此不建议暴露到局域网或公网。
+
+## 项目截图
+
+工作台首页集中展示 Docker 状态、项目数量、快捷入口和环境检查结果。
+
+![工作台概览](docs/images/panel-overview.jpg)
+
+项目启动器用于接入 Laravel、Hyperf、Go 或普通 PHP 项目，并提供启动、重启、日志、命令执行和配置预览等常用操作。
+
+![项目启动器](docs/images/panel-projects.jpg)
+
+快捷环境可以按需启动常见开发组合，例如 PHP 8.3、Nginx、Redis、Go 或完整 Web 环境。
+
+![快捷环境](docs/images/panel-environments.jpg)
+
+容器中心用于查看当前开发容器状态，并执行刷新、启动、停止、重启、日志查看等操作。
+
+![容器中心](docs/images/panel-containers.jpg)
 
 ## 当前架构
 

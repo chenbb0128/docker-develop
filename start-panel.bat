@@ -71,6 +71,15 @@ echo [4/6] Starting docker-panel service...
 if errorlevel 1 (
     echo.
     echo Failed to start docker-panel.
+    echo.
+    echo Common cause:
+    echo Docker cannot pull base images from Docker Hub, for example php:8.3-cli-alpine or composer:2.
+    echo.
+    echo Fix:
+    echo 1. Configure Docker Engine registry-mirrors in Docker Desktop or Docker daemon, then restart Docker.
+    echo 2. Or set DOCKER_PANEL_PHP_IMAGE and DOCKER_PANEL_COMPOSER_IMAGE in .env to a reachable image proxy.
+    echo 3. Rerun start-panel.bat.
+    echo.
     echo Recent docker-panel logs:
     %COMPOSE_CMD% logs --tail=80 docker-panel
     echo.
