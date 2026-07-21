@@ -88,6 +88,47 @@ services:
       - frontend
       - backend
 
+# BEGIN Hyperf project: hyperf-classmateserver
+
+  hyperf-classmateserver:
+    build:
+      context: ./services/workspace
+      args:
+        - CHANGE_SOURCE=${CHANGE_SOURCE}
+        - UBUNTU_VERSION=${UBUNTU_VERSION}
+        - PHP_VERSION=8.3
+        - INSTALL_XDEBUG=${WORKSPACE_INSTALL_XDEBUG}
+        - XDEBUG_PORT=${WORKSPACE_XDEBUG_PORT}
+        - INSTALL_MONGO=${WORKSPACE_INSTALL_MONGO}
+        - INSTALL_PHPREDIS=${WORKSPACE_INSTALL_PHPREDIS}
+        - INSTALL_SWOOLE=${WORKSPACE_INSTALL_SWOOLE}
+        - INSTALL_COMPOSER=${WORKSPACE_INSTALL_COMPOSER}
+        - COMPOSER_VERSION=${WORKSPACE_COMPOSER_VERSION}
+        - COMPOSER_REPO_PACKAGIST=${WORKSPACE_COMPOSER_REPO_PACKAGIST}
+        - INSTALL_NODE=${WORKSPACE_INSTALL_NODE}
+        - NODE_VERSION=${WORKSPACE_NODE_VERSION}
+        - INSTALL_SUPERVISOR=${WORKSPACE_INSTALL_SUPERVISOR}
+        - SHELL_OH_MY_ZSH=${SHELL_OH_MY_ZSH}
+        - PUID=${WORKSPACE_PUID}
+        - PGID=${WORKSPACE_PGID}
+        - TZ=${TIMEZONE}
+        - CONTAINER_PROJECT_PATH=${CONTAINER_PROJECT_PATH}
+    working_dir: '/develop/Hua/Projects/ClassMate/ClassMateServer'
+    command: sh -lc 'git config --global --add safe.directory "$$PWD" 2>/dev/null || true; if [ -f composer.json ] && [ ! -f vendor/autoload.php ]; then composer install --no-interaction --prefer-dist; fi; if [ ! -f bin/hyperf.php ]; then echo "Hyperf entry file missing."; echo "Check HOST_PROJECT_PATH in .env and the project path /develop/Hua/Projects/ClassMate/ClassMateServer."; exit 66; fi; if php bin/hyperf.php list 2>/dev/null | grep -q "server:watch"; then php bin/hyperf.php server:watch; else php bin/hyperf.php start; fi'
+    volumes:
+      - ${HOST_PROJECT_PATH}:${CONTAINER_PROJECT_PATH}
+    extra_hosts:
+      - "dockerhost:${DOCKER_HOST_IP}"
+    ports:
+      - "9502:9501"
+    depends_on:
+      - redis
+    tty: true
+    networks:
+      - frontend
+      - backend
+# END Hyperf project: hyperf-classmateserver
+
 #---------------------------------------------
 # Docker 管理面板 (Hyperf + Swoole)
 #---------------------------------------------

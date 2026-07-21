@@ -14,6 +14,7 @@ class ProjectController extends AbstractController
 {
     private const HYPERF_DEV_COMMAND = 'if php bin/hyperf.php list 2>/dev/null | grep -q "server:watch"; then php bin/hyperf.php server:watch; else php bin/hyperf.php start; fi';
     private const HYPERF_STARTUP_PREPARE = 'git config --global --add safe.directory "$$PWD" 2>/dev/null || true; if [ -f composer.json ] && [ ! -f vendor/autoload.php ]; then composer install --no-interaction --prefer-dist; fi';
+    private const HYPERF_ENTRY_CHECK = 'if [ ! -f bin/hyperf.php ]; then echo "Hyperf entry file missing."; echo "Check HOST_PROJECT_PATH in .env and the project path."; exit 66; fi';
 
     #[Inject]
     protected DockerService $docker;
@@ -333,6 +334,58 @@ class ProjectController extends AbstractController
         } catch (\Throwable $e) {
             return $this->error($this->friendlyCommandError($e), 500);
         }
+    }
+
+    #[RequestMapping(path: '/api/projects/{key}/start-task', methods: 'POST')]
+    public function startTask(string $key)
+    {
+        if (!$this->checkAuth()) {
+            return $this->error('Unauthenticated', 401);
+        }
+
+        try {
+            return $this->createProjectActionTask($key, 'start');
+        } catch (\Throwable $e) {
+            return $this->error($this->friendlyCommandError($e), 500);
+        }
+    }
+
+    #[RequestMapping(path: '/api/projects/{key}/restart-task', methods: 'POST')]
+    public function restartTask(string $key)
+    {
+        if (!$this->checkAuth()) {
+            return $this->error('Unauthenticated', 401);
+        }
+
+        try {
+            return $this->createProjectActionTask($key, 'restart');
+        } catch (\Throwable $e) {
+            return $this->error($this->friendlyCommandError($e), 500);
+        }
+    }
+
+    #[RequestMapping(path: '/api/project-tasks/{taskId}', methods: 'GET')]
+    public function projectTask(string $taskId)
+    {
+        if (!$this->checkAuth()) {
+            return $this->error('Unauthenticated', 401);
+        }
+
+        $taskId = $this->normalizeTaskId($taskId);
+        if ($taskId === '') {
+            return $this->error('Task not found', 404);
+        }
+
+        $statusFile = $this->projectTaskFile($taskId, '.status');
+        clearstatcache(true, $statusFile);
+        if (!is_file($statusFile)) {
+            return $this->error('Task not found', 404);
+        }
+
+        return $this->json([
+            'success' => true,
+            'data' => $this->readProjectTask($taskId, (int) $this->request->input('offset', 0)),
+        ]);
     }
 
     #[RequestMapping(path: '/api/projects/{key}/logs', methods: 'GET')]
@@ -684,7 +737,7 @@ class ProjectController extends AbstractController
             '        - TZ=${TIMEZONE}',
             '        - CONTAINER_PROJECT_PATH=${CONTAINER_PROJECT_PATH}',
             '    working_dir: ' . $this->yamlSingleQuote($path),
-            '    command: sh -lc ' . $this->yamlSingleQuote(self::HYPERF_STARTUP_PREPARE . '; ' . $command),
+            '    command: sh -lc ' . $this->yamlSingleQuote(self::HYPERF_STARTUP_PREPARE . '; ' . self::HYPERF_ENTRY_CHECK . '; ' . $command),
             '    volumes:',
             '      - ${HOST_PROJECT_PATH}:${CONTAINER_PROJECT_PATH}',
             '    extra_hosts:',
@@ -871,6 +924,11 @@ class ProjectController extends AbstractController
             $command = substr($command, strlen($prepare));
         }
 
+        $entryCheck = self::HYPERF_ENTRY_CHECK . '; ';
+        if (str_starts_with($command, $entryCheck)) {
+            $command = substr($command, strlen($entryCheck));
+        }
+
         return trim($command);
     }
 
@@ -936,13 +994,29 @@ class ProjectController extends AbstractController
     {
         $services = $this->projectServices($project);
         $running = 0;
+        $serviceStatuses = [];
+
         foreach ($services as $service) {
+            $matched = null;
             foreach ($containers as $container) {
-                if (str_contains((string) ($container['name'] ?? ''), $service) && ($container['state'] ?? '') === 'running') {
-                    $running++;
+                if ($this->containerMatchesService((string) ($container['name'] ?? ''), $service)) {
+                    $matched = $container;
                     break;
                 }
             }
+
+            $isRunning = ($matched['state'] ?? '') === 'running';
+            if ($isRunning) {
+                $running++;
+            }
+
+            $serviceStatuses[] = [
+                'name' => $service,
+                'container' => $matched['name'] ?? '',
+                'state' => $matched['state'] ?? 'missing',
+                'status' => $matched['status'] ?? '未创建容器',
+                'running' => $isRunning,
+            ];
         }
 
         $project['services'] = $services;
@@ -950,9 +1024,23 @@ class ProjectController extends AbstractController
             'servicesRunning' => $running,
             'servicesTotal' => count($services),
             'active' => count($services) > 0 && $running === count($services),
+            'services' => $serviceStatuses,
         ];
 
         return $project;
+    }
+
+    private function containerMatchesService(string $containerName, string $service): bool
+    {
+        if ($containerName === '' || $service === '') {
+            return false;
+        }
+
+        return $containerName === $service
+            || str_contains($containerName, '-' . $service . '-')
+            || str_contains($containerName, '_' . $service . '_')
+            || str_ends_with($containerName, '-' . $service)
+            || str_ends_with($containerName, '_' . $service);
     }
 
     private function projectServices(array $project): array
@@ -1112,6 +1200,253 @@ class ProjectController extends AbstractController
         $this->runServiceCommand($service, implode(' && ', $commands));
     }
 
+    private function createProjectActionTask(string $key, string $action)
+    {
+        if (!in_array($action, ['start', 'restart'], true)) {
+            return $this->error('Unsupported project action', 400);
+        }
+
+        $project = $this->findProject($key);
+        if ($project === null) {
+            return $this->error('Project not found', 404);
+        }
+
+        $services = $this->projectServices($project);
+        if ($services === []) {
+            return $this->error('Project does not have services to start.', 400);
+        }
+
+        $safeKey = preg_replace('/[^a-zA-Z0-9_-]/', '', $key) ?: 'project';
+        $taskId = date('YmdHis') . '-' . $safeKey . '-' . bin2hex(random_bytes(3));
+        $this->ensureProjectTaskDir();
+
+        $logFile = $this->projectTaskFile($taskId, '.log');
+        $statusFile = $this->projectTaskFile($taskId, '.status');
+        $exitFile = $this->projectTaskFile($taskId, '.exit');
+        $startedFile = $this->projectTaskFile($taskId, '.started');
+        $finishedFile = $this->projectTaskFile($taskId, '.finished');
+        $scriptFile = $this->projectTaskFile($taskId, '.sh');
+
+        file_put_contents($statusFile, 'queued');
+        file_put_contents($startedFile, (string) time());
+        file_put_contents($logFile, '[' . date('H:i:s') . "] 已创建后台任务，正在准备执行。\n");
+
+        $script = $this->buildProjectTaskScript(
+            $taskId,
+            $action,
+            $project,
+            $services,
+            $logFile,
+            $statusFile,
+            $exitFile,
+            $startedFile,
+            $finishedFile
+        );
+        file_put_contents($scriptFile, $script);
+        chmod($scriptFile, 0755);
+        $pid = $this->launchDetachedScript($scriptFile);
+
+        return $this->success([
+            'taskId' => $taskId,
+            'status' => 'queued',
+            'pid' => $pid,
+            'services' => $services,
+        ], 'Project task started');
+    }
+
+    private function ensureProjectTaskDir(): string
+    {
+        $dir = BASE_PATH . '/runtime/tasks';
+        if (!is_dir($dir) && !mkdir($dir, 0775, true) && !is_dir($dir)) {
+            throw new \RuntimeException('Unable to create task runtime directory.');
+        }
+
+        return $dir;
+    }
+
+    private function normalizeTaskId(string $taskId): string
+    {
+        return preg_replace('/[^a-zA-Z0-9_.-]/', '', $taskId) ?? '';
+    }
+
+    private function projectTaskFile(string $taskId, string $suffix): string
+    {
+        return $this->ensureProjectTaskDir() . '/' . $this->normalizeTaskId($taskId) . $suffix;
+    }
+
+    private function readProjectTask(string $taskId, int $offset): array
+    {
+        $logFile = $this->projectTaskFile($taskId, '.log');
+        clearstatcache();
+        $status = trim((string) @file_get_contents($this->projectTaskFile($taskId, '.status'))) ?: 'running';
+        $exitText = trim((string) @file_get_contents($this->projectTaskFile($taskId, '.exit')));
+        $startedAt = (int) trim((string) @file_get_contents($this->projectTaskFile($taskId, '.started')));
+        $finishedAt = (int) trim((string) @file_get_contents($this->projectTaskFile($taskId, '.finished')));
+        if ($startedAt <= 0) {
+            $startedAt = time();
+        }
+
+        $size = is_file($logFile) ? (int) filesize($logFile) : 0;
+        if ($offset < 0 || $offset > $size) {
+            $offset = 0;
+        }
+
+        $output = '';
+        if ($size > 0) {
+            $handle = fopen($logFile, 'rb');
+            if ($handle !== false) {
+                fseek($handle, $offset);
+                $output = (string) stream_get_contents($handle);
+                fclose($handle);
+            }
+        }
+
+        return [
+            'taskId' => $taskId,
+            'status' => $status,
+            'exitCode' => $exitText === '' ? null : (int) $exitText,
+            'offset' => $size,
+            'output' => $output,
+            'elapsed' => max(0, ($finishedAt > 0 ? $finishedAt : time()) - $startedAt),
+            'finishedAt' => $finishedAt > 0 ? $finishedAt : null,
+        ];
+    }
+
+    private function launchDetachedScript(string $scriptFile): string
+    {
+        $output = [];
+        $returnVar = 0;
+        exec('sh ' . escapeshellarg($scriptFile) . ' >/dev/null 2>&1 & echo $!', $output, $returnVar);
+        if ($returnVar !== 0) {
+            throw new \RuntimeException('Unable to launch project task.');
+        }
+
+        return trim((string) ($output[0] ?? ''));
+    }
+
+    private function buildProjectTaskScript(
+        string $taskId,
+        string $action,
+        array $project,
+        array $services,
+        string $logFile,
+        string $statusFile,
+        string $exitFile,
+        string $startedFile,
+        string $finishedFile
+    ): string {
+        $serviceText = implode(' ', array_map('escapeshellarg', $services));
+        $prefix = 'cd ' . escapeshellarg($this->projectPath) . ' && unset PHP_VERSION && ' . $this->composeHostEnvPrefix();
+        $upNoBuildCommand = $prefix . 'docker-compose up -d --no-build ' . $serviceText;
+        $buildPlainCommand = $prefix . 'docker-compose build --progress=plain ' . $serviceText;
+        $upCommand = $prefix . 'docker-compose up -d ' . $serviceText;
+        $psCommand = $prefix . 'docker-compose ps ' . $serviceText;
+        $runningServicesCommand = $prefix . 'docker-compose ps --services --status running ' . $serviceText;
+        $logsCommand = $prefix . 'docker-compose logs --tail=80 ' . $serviceText;
+        $stopCommand = $prefix . 'docker-compose stop ' . escapeshellarg($this->hyperfService($project));
+        $projectName = (string) ($project['name'] ?? $project['key'] ?? $taskId);
+        $actionName = $action === 'restart' ? '重启' : '启动';
+
+        $lines = [
+            '#!/bin/sh',
+            'LOG_FILE=' . escapeshellarg($logFile),
+            'STATUS_FILE=' . escapeshellarg($statusFile),
+            'EXIT_FILE=' . escapeshellarg($exitFile),
+            'STARTED_FILE=' . escapeshellarg($startedFile),
+            'FINISHED_FILE=' . escapeshellarg($finishedFile),
+            'mark_status() { printf "%s" "$1" > "$STATUS_FILE"; }',
+            'log() { printf "[%s] %s\n" "$(date +%H:%M:%S)" "$*" >> "$LOG_FILE"; }',
+            'run_step() {',
+            '  log ""',
+            '  log "$ $1"',
+            '  sh -lc "$1" >> "$LOG_FILE" 2>&1',
+            '  code=$?',
+            '  if [ "$code" -ne 0 ]; then log "命令失败，退出码：$code"; fi',
+            '  return "$code"',
+            '}',
+            'verify_services() {',
+            '  check_command="$1"',
+            '  shift',
+            '  check_file="${LOG_FILE}.running"',
+            '  : > "$check_file"',
+            '  log ""',
+            '  log "$ $check_command"',
+            '  if ! sh -lc "$check_command" > "$check_file" 2>> "$LOG_FILE"; then',
+            '    cat "$check_file" >> "$LOG_FILE"',
+            '    rm -f "$check_file"',
+            '    log "运行状态检查失败。"',
+            '    return 1',
+            '  fi',
+            '  cat "$check_file" >> "$LOG_FILE"',
+            '  missing=0',
+            '  for service in "$@"; do',
+            '    if ! grep -qx "$service" "$check_file"; then',
+            '      log "服务未保持运行：$service"',
+            '      missing=1',
+            '    fi',
+            '  done',
+            '  rm -f "$check_file"',
+            '  return "$missing"',
+            '}',
+            'finish() {',
+            '  code="$1"',
+            '  printf "%s" "$code" > "$EXIT_FILE"',
+            '  date +%s > "$FINISHED_FILE"',
+            '  if [ "$code" -eq 0 ]; then mark_status success; log "任务完成。"; else mark_status failed; log "任务失败，请查看上方最后一段错误。"; fi',
+            '  exit "$code"',
+            '}',
+            'mark_status running',
+            'date +%s > "$STARTED_FILE"',
+            'log ' . escapeshellarg($actionName . '项目：' . $projectName),
+            'log ' . escapeshellarg('服务列表：' . implode(', ', $services)),
+        ];
+
+        if ($action === 'restart' && ($project['type'] ?? '') === 'hyperf') {
+            $lines[] = 'log "阶段 1/5：停止旧的项目容器"';
+            $lines[] = 'run_step ' . escapeshellarg($stopCommand) . ' || true';
+            $directStage = '阶段 2/5：尝试直接启动已有镜像';
+            $buildStage = '阶段 3/5：构建项目镜像';
+            $upStage = '阶段 4/5：启动项目服务';
+            $logsStage = '阶段 5/5：检查运行状态并读取最近日志';
+        } else {
+            $directStage = '阶段 1/4：尝试直接启动已有镜像';
+            $buildStage = '阶段 2/4：构建项目镜像';
+            $upStage = '阶段 3/4：启动项目服务';
+            $logsStage = '阶段 4/4：检查运行状态并读取最近日志';
+        }
+
+        $appendSuccessCheck = function () use (&$lines, $psCommand, $runningServicesCommand, $logsCommand, $serviceText, $logsStage): void {
+            $lines[] = 'log "项目服务已启动，等待容器稳定..."';
+            $lines[] = 'sleep 3';
+            $lines[] = 'run_step ' . escapeshellarg($psCommand) . ' || true';
+            $lines[] = 'log ' . escapeshellarg($logsStage);
+            $lines[] = 'if ! verify_services ' . escapeshellarg($runningServicesCommand) . ' ' . $serviceText . '; then';
+            $lines[] = '  log "服务没有全部保持运行，开始读取最近容器日志。"';
+            $lines[] = '  run_step ' . escapeshellarg($logsCommand) . ' || true';
+            $lines[] = '  finish 1';
+            $lines[] = 'fi';
+            $lines[] = 'run_step ' . escapeshellarg($logsCommand) . ' || true';
+            $lines[] = 'finish 0';
+        };
+
+        $lines[] = 'log ' . escapeshellarg($directStage);
+        $lines[] = 'if run_step ' . escapeshellarg($upNoBuildCommand) . '; then';
+        $appendSuccessCheck();
+        $lines[] = 'fi';
+        $lines[] = 'log "直接启动没有成功，通常是镜像尚未构建、基础镜像需要拉取，或 compose 配置需要重新生成。"';
+        $lines[] = 'log ' . escapeshellarg($buildStage);
+        $lines[] = 'if ! run_step ' . escapeshellarg($buildPlainCommand) . '; then';
+        $lines[] = '  finish 1';
+        $lines[] = 'fi';
+        $lines[] = 'log ' . escapeshellarg($upStage);
+        $lines[] = 'if ! run_step ' . escapeshellarg($upCommand) . '; then';
+        $lines[] = '  run_step ' . escapeshellarg($logsCommand) . ' || true';
+        $lines[] = '  finish 1';
+        $lines[] = 'fi';
+        $appendSuccessCheck();
+
+        return implode("\n", $lines) . "\n";
+    }
     private function runHostCommand(string $command): string
     {
         $output = [];

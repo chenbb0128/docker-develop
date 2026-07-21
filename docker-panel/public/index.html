@@ -894,8 +894,19 @@
         .project-meta-tile { border: 1px solid var(--line); border-radius: 0; padding: 9px; background: #fff; }
         .project-meta-tile span { display: block; color: var(--gray-500); font-size: 11px; font-weight: 700; }
         .project-meta-tile strong { display: block; color: var(--gray-800); font-size: 12px; margin-top: 3px; word-break: break-all; }
-        .project-services { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
-        .project-chip { border-radius: 0; padding: 4px 8px; background: #f7f7f7; border: 1px solid var(--line); color: var(--gray-700); font-size: 11px; font-weight: 700; }
+        .project-service-summary { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 12px; color: var(--gray-500); font-size: 11px; font-weight: 700; }
+        .project-service-summary strong { color: var(--gray-800); font-size: 11px; }
+        .project-services { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 7px; }
+        .project-chip,
+        .project-service-chip { border-radius: 0; padding: 4px 8px; background: #f7f7f7; border: 1px solid var(--line); color: var(--gray-700); font-size: 11px; font-weight: 700; }
+        .project-service-chip { display: inline-flex; align-items: center; gap: 6px; min-height: 28px; }
+        .project-service-chip.running { background: #ecfdf5; border-color: #bbf7d0; color: #065f46; }
+        .project-service-chip.stopped { background: #fff7ed; border-color: #fed7aa; color: #9a3412; }
+        .project-service-chip.missing { background: #fef2f2; border-color: #fecaca; color: #991b1b; }
+        .project-service-chip.unknown { background: #f8fafc; border-color: var(--line); color: var(--gray-600); }
+        .project-service-dot { width: 7px; height: 7px; border-radius: 999px; background: currentColor; flex: 0 0 auto; }
+        .project-service-name { max-width: 190px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .project-service-state { padding-left: 6px; border-left: 1px solid currentColor; opacity: .85; }
         .project-actions { display: grid; gap: 9px; margin-top: 14px; }
         .project-action-group { display: flex; flex-wrap: wrap; gap: 8px; }
         .project-action-label { width: 100%; color: var(--gray-500); font-size: 11px; font-weight: 700; letter-spacing: 0; }
@@ -1067,7 +1078,7 @@
                         <div class="section-kicker">接入、启动、运行命令和查看日志都从这里开始。</div>
                     </div>
                     <div style="display:flex;gap:8px">
-                        <button class="btn btn-sm refresh-btn" onclick="loadProjects()">刷新</button>
+                        <button class="btn btn-sm refresh-btn" onclick="refreshProjectList()">刷新</button>
                         <button class="btn btn-sm btn-success" onclick="openNewProjectForm()">新增项目</button>
                     </div>
                 </div>
@@ -1446,6 +1457,7 @@
         const API = '/api';
         let authToken = '';
         let pendingProjectDelete = null;
+        let terminalPollToken = 0;
 
         async function ensureAuthToken() {
             if (authToken) return;
@@ -1498,6 +1510,7 @@
         }
 
         let cachedContainers = [];
+        let cachedProjects = [];
         let containerFilter = 'all';
 
         async function loadContainers() {
@@ -1510,6 +1523,10 @@
                 document.getElementById('stoppedCount').textContent = cachedContainers.length - running;
                 updateHeroStatus({ containers: running });
                 renderContainers();
+                if (cachedProjects.length) {
+                    const projectList = document.getElementById('projectList');
+                    if (projectList) projectList.innerHTML = cachedProjects.map(project => renderProjectCard(project)).join('');
+                }
             } catch (e) {
                 updateHeroStatus({ containers: '异常' });
                 document.getElementById('containerList').innerHTML =
@@ -1517,10 +1534,10 @@
             }
         }
 
-        function refreshDashboard() {
-            loadProjects();
+        async function refreshDashboard() {
             loadPresets();
-            loadContainers();
+            await loadContainers();
+            await loadProjects();
             runHealthCheck();
         }
 
@@ -1844,19 +1861,20 @@
 
         // ============ 终端弹窗 ============
         function showTerminal(title) {
+            terminalPollToken += 1;
             document.getElementById('terminalModal').classList.add('active');
             document.getElementById('terminalTitle').textContent = title;
             document.getElementById('terminalOutput').innerHTML = '';
-            document.getElementById('terminalStatus').textContent = '执行中...';
+            setTerminalStatus('执行中...', null);
         }
 
         function closeTerminalModal() {
+            terminalPollToken += 1;
             document.getElementById('terminalModal').classList.remove('active');
         }
         document.getElementById('terminalModal').onclick = e => e.target.id === 'terminalModal' && closeTerminalModal();
 
-        function appendTerminal(text, type = 'stdout') {
-            const output = document.getElementById('terminalOutput');
+        function terminalColor(type = 'stdout') {
             const colors = {
                 'cmd': '#60a5fa',
                 'info': '#94a3b8',
@@ -1865,15 +1883,37 @@
                 'error': '#ef4444',
                 'success': '#22c55e',
             };
-            const color = colors[type] || colors.stdout;
-            output.innerHTML += `<span style="color:${color}">${escapeHtml(text)}</span>\n`;
+            return colors[type] || colors.stdout;
+        }
+
+        function cleanTerminalText(text) {
+            return String(text ?? '').replace(/\x1B\[[0-?]*[ -/]*[@-~]/g, '');
+        }
+
+        function appendTerminalChunk(text, type = 'stdout') {
+            const value = cleanTerminalText(text);
+            if (!value) return;
+            const output = document.getElementById('terminalOutput');
+            output.innerHTML += `<span style="color:${terminalColor(type)}">${escapeHtml(value)}</span>`;
+            if (!value.endsWith('\n')) output.innerHTML += '\n';
             output.scrollTop = output.scrollHeight;
         }
 
-        function setTerminalStatus(text, success) {
+        function appendTerminal(text, type = 'stdout') {
+            const value = String(text ?? '');
+            appendTerminalChunk(value.endsWith('\n') ? value : value + '\n', type);
+        }
+
+        function setTerminalStatus(text, success = null) {
             const el = document.getElementById('terminalStatus');
             el.textContent = text;
-            el.style.color = success ? '#22c55e' : '#ef4444';
+            if (success === true) {
+                el.style.color = '#22c55e';
+            } else if (success === false) {
+                el.style.color = '#ef4444';
+            } else {
+                el.style.color = '#94a3b8';
+            }
         }
 
         function escapeHtml(text) {
@@ -1911,6 +1951,96 @@
             return map[type] || String(type || 'Project');
         }
 
+        function containerMatchesService(containerName, service) {
+            const name = String(containerName || '');
+            const serviceName = String(service || '');
+            if (!name || !serviceName) return false;
+            return name === serviceName
+                || name.includes(`-${serviceName}-`)
+                || name.includes(`_${serviceName}_`)
+                || name.endsWith(`-${serviceName}`)
+                || name.endsWith(`_${serviceName}`);
+        }
+
+        function resolveServiceFromContainers(service) {
+            const matched = cachedContainers.find(container => containerMatchesService(container.name, service));
+            if (!matched) {
+                return {
+                    name: service,
+                    container: '',
+                    state: 'missing',
+                    status: '未创建容器',
+                    running: false,
+                };
+            }
+
+            return {
+                name: service,
+                container: matched.name || '',
+                state: matched.state || 'unknown',
+                status: matched.status || '未知状态',
+                running: matched.state === 'running',
+            };
+        }
+
+        function projectServiceDetails(project) {
+            const status = project.status || {};
+            const serviceNames = project.services || [];
+            const apiDetails = Array.isArray(status.services) ? status.services : [];
+            const names = serviceNames.length ? serviceNames : apiDetails.map(item => item.name).filter(Boolean);
+
+            return names.map(name => {
+                const fromApi = apiDetails.find(item => item.name === name);
+                const fromContainers = resolveServiceFromContainers(name);
+                if (!fromApi || fromApi.state === 'unknown' || fromApi.state === 'missing') {
+                    return fromContainers;
+                }
+                return fromApi;
+            });
+        }
+
+        function projectServiceClass(service) {
+            if (service.running || service.state === 'running') return 'running';
+            if (service.state === 'missing') return 'missing';
+            if (service.state && service.state !== 'unknown') return 'stopped';
+            return 'unknown';
+        }
+
+        function projectServiceLabel(service) {
+            if (service.running || service.state === 'running') return '运行中';
+            const labels = {
+                created: '已创建',
+                exited: '已退出',
+                paused: '已暂停',
+                restarting: '重启中',
+                removing: '删除中',
+                dead: '异常',
+                missing: '未创建',
+                unknown: '未检查',
+            };
+            return labels[service.state] || service.state || '未知';
+        }
+
+        function renderProjectServiceChip(service) {
+            const name = service.name || 'unknown';
+            const label = projectServiceLabel(service);
+            const title = service.container
+                ? `${name} · ${service.container} · ${service.status || label}`
+                : `${name} · ${label}`;
+
+            return `
+                <span class="project-service-chip ${projectServiceClass(service)}" title="${escapeHtml(title)}">
+                    <span class="project-service-dot"></span>
+                    <span class="project-service-name">${escapeHtml(name)}</span>
+                    <span class="project-service-state">${escapeHtml(label)}</span>
+                </span>
+            `;
+        }
+
+        async function refreshProjectList() {
+            await loadContainers();
+            await loadProjects();
+        }
         // ============ Project launcher ============
         async function loadProjects() {
             const list = document.getElementById('projectList');
@@ -1919,6 +2049,7 @@
             try {
                 const data = await api('/projects');
                 const projects = data.projects || [];
+                cachedProjects = projects;
                 updateHeroStatus({ projects: projects.length });
 
                 if (!projects.length) {
@@ -1951,12 +2082,13 @@
             const active = !!status.active;
             const servicesRunning = Number(status.servicesRunning || 0);
             const servicesTotal = Number(status.servicesTotal || (project.services || []).length || 0);
-            const servicesText = servicesTotal ? `${servicesRunning}/${servicesTotal}` : '未配置';
+            const servicesText = servicesTotal ? `${servicesRunning}/${servicesTotal} 已运行` : '未配置服务';
             const url = project.url || (project.port ? `http://localhost:${project.port}` : '');
             const runtimeText = project.type === 'hyperf' ? '专属容器 9501' : (project.php ? `PHP 服务：${project.php}` : 'workspace 备用');
             const keyArg = jsArg(project.key || '');
             const urlArg = jsArg(url);
             const services = project.services || [];
+            const serviceDetails = projectServiceDetails(project);
 
             return `
                 <div class="project-card ${active ? 'active' : ''}">
@@ -1968,7 +2100,7 @@
                                 <div class="project-key">${escapeHtml(project.key || '')}</div>
                             </div>
                         </div>
-                        <span class="status-badge ${active ? 'running' : 'stopped'}">${active ? '已就绪' : `服务 ${servicesText}`}</span>
+                        <span class="status-badge ${active ? 'running' : 'stopped'}">${active ? '全部运行' : servicesText}</span>
                     </div>
                     <div class="project-path">${escapeHtml(project.path || '未填写项目路径')}</div>
                     ${project.notes ? `<div class="project-note">${escapeHtml(project.notes)}</div>` : ''}
@@ -1978,8 +2110,12 @@
                         <div class="project-meta-tile"><span>访问地址</span><strong>${escapeHtml(url || '未配置')}</strong></div>
                         <div class="project-meta-tile"><span>端口</span><strong>${escapeHtml(project.port || '未配置')}</strong></div>
                     </div>
+                    <div class="project-service-summary">
+                        <span>服务状态</span>
+                        <strong>${escapeHtml(servicesText)}</strong>
+                    </div>
                     <div class="project-services">
-                        ${services.length ? services.map(service => `<span class="project-chip">${escapeHtml(service)}</span>`).join('') : '<span class="project-chip">未绑定服务</span>'}
+                        ${serviceDetails.length ? serviceDetails.map(renderProjectServiceChip).join('') : '<span class="project-chip">未绑定服务</span>'}
                     </div>
                     <div class="project-actions">
                         <div class="project-action-group">
@@ -2559,20 +2695,118 @@
             return true;
         }
 
-        async function runProjectAction(key, action, retried = false) {
-            const actionNames = { start: '启动', stop: '停止', restart: '重启' };
+        function delay(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        async function waitProjectTask(taskId, token) {
+            let offset = 0;
+            let fullOutput = '';
+            let failures = 0;
+
+            while (token === terminalPollToken) {
+                try {
+                    const data = await api(`/project-tasks/${encodeURIComponent(taskId)}?offset=${offset}`);
+                    const task = data.data || {};
+                    failures = 0;
+
+                    if (task.output) {
+                        fullOutput += task.output;
+                        appendTerminalChunk(task.output, task.status === 'failed' ? 'stderr' : 'stdout');
+                    }
+                    if (typeof task.offset === 'number') offset = task.offset;
+
+                    if (task.status === 'success') {
+                        return { success: true, output: fullOutput, exitCode: task.exitCode };
+                    }
+                    if (task.status === 'failed') {
+                        return { success: false, output: fullOutput, exitCode: task.exitCode };
+                    }
+
+                    setTerminalStatus(`执行中... ${task.elapsed || 0} 秒`, null);
+                    await delay(1000);
+                } catch (e) {
+                    failures += 1;
+                    appendTerminal(`读取任务进度失败（${failures}/3）：${e.message}`, 'error');
+                    if (failures >= 3) {
+                        return { success: false, output: fullOutput + '\n' + e.message, exitCode: null };
+                    }
+                    await delay(2000);
+                }
+            }
+
+            return { cancelled: true, output: fullOutput };
+        }
+
+        async function runProjectActionTask(key, action, retried = false) {
+            const actionNames = { start: '启动', restart: '重启' };
             showTerminal(`${actionNames[action] || action}项目：${key}`);
             appendTerminal(`$ project ${action} ${key}`, 'cmd');
-            appendTerminal('正在执行，请稍候...', 'info');
+            appendTerminal('已切换到实时任务日志，下面会显示真实执行步骤。', 'info');
             if (action === 'start') {
                 appendTerminal('第一次启动时会自动构建镜像；如果项目缺少 vendor，会先执行 composer install。', 'info');
             }
 
-            const startedAt = Date.now();
-            const progressTimer = setInterval(() => {
-                const seconds = Math.floor((Date.now() - startedAt) / 1000);
-                appendTerminal(`仍在执行，已等待 ${seconds} 秒...`, 'info');
-            }, 15000);
+            try {
+                const data = await api(`/projects/${key}/${action}-task`, { method: 'POST' });
+                const task = data.data || {};
+                if (!data.success || !task.taskId) {
+                    appendTerminal(data.error || '任务创建失败', 'error');
+                    setTerminalStatus('失败', false);
+                    return;
+                }
+
+                appendTerminal(`任务 ID：${task.taskId}`, 'info');
+                if (Array.isArray(task.services) && task.services.length) {
+                    appendTerminal(`服务：${task.services.join(', ')}`, 'info');
+                }
+
+                const token = terminalPollToken;
+                const result = await waitProjectTask(task.taskId, token);
+                if (result.cancelled) return;
+
+                if (result.success) {
+                    appendTerminal('\n完成', 'success');
+                    setTerminalStatus('完成', true);
+                    setTimeout(refreshDashboard, 1000);
+                    return;
+                }
+
+                const message = result.output || '操作失败';
+                if (!retried && isMissingComposeServiceError(message)) {
+                    if (await repairHyperfEnvironment(key)) {
+                        return runProjectActionTask(key, action, true);
+                    }
+                }
+
+                appendTerminal('操作失败，请查看上方最后一段错误。', 'error');
+                setTerminalStatus('失败', false);
+            } catch (e) {
+                const message = e.message || '操作失败';
+                if (!retried && isMissingComposeServiceError(message)) {
+                    try {
+                        if (await repairHyperfEnvironment(key)) {
+                            return runProjectActionTask(key, action, true);
+                        }
+                    } catch (repairError) {
+                        appendTerminal(repairError.message || String(repairError), 'error');
+                    }
+                }
+
+                appendTerminal(message, 'error');
+                setTerminalStatus('错误', false);
+            }
+        }
+
+        async function runProjectAction(key, action, retried = false) {
+            if (action === 'start' || action === 'restart') {
+                return runProjectActionTask(key, action, retried);
+            }
+
+            const actionNames = { start: '启动', stop: '停止', restart: '重启' };
+            showTerminal(`${actionNames[action] || action}项目：${key}`);
+            appendTerminal(`$ project ${action} ${key}`, 'cmd');
+            appendTerminal('正在执行，请稍候...', 'info');
 
             try {
                 const data = await api(`/projects/${key}/${action}`, { method: 'POST' });
@@ -2584,31 +2818,11 @@
                     return;
                 }
 
-                const message = data.error || '操作失败';
-                if (action === 'start' && !retried && isMissingComposeServiceError(message)) {
-                    if (await repairHyperfEnvironment(key)) {
-                        return runProjectAction(key, action, true);
-                    }
-                }
-
-                appendTerminal(message, 'error');
+                appendTerminal(data.error || '操作失败', 'error');
                 setTerminalStatus('失败', false);
             } catch (e) {
-                const message = e.message || '操作失败';
-                if (action === 'start' && !retried && isMissingComposeServiceError(message)) {
-                    try {
-                        if (await repairHyperfEnvironment(key)) {
-                            return runProjectAction(key, action, true);
-                        }
-                    } catch (repairError) {
-                        appendTerminal(repairError.message || String(repairError), 'error');
-                    }
-                }
-
-                appendTerminal(message, 'error');
+                appendTerminal(e.message || '操作失败', 'error');
                 setTerminalStatus('错误', false);
-            } finally {
-                clearInterval(progressTimer);
             }
         }
         const startProject = key => runProjectAction(key, 'start');
