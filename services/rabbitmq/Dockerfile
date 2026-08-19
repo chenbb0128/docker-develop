@@ -1,4 +1,5 @@
-FROM rabbitmq:alpine
+ARG BASE_IMAGE_REGISTRY=
+FROM ${BASE_IMAGE_REGISTRY}rabbitmq:alpine
 
 RUN rabbitmq-plugins enable --offline rabbitmq_management
 

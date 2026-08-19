@@ -49,12 +49,11 @@ Desktop.ini
 !/logs/.gitkeep
 !/logs/nginx/
 !/logs/nginx/.gitkeep
-/data/
-!/data/
+/data/*
 !/data/.gitkeep
-/data/.docker-develop-initialized
 !/data/demo/
 !/data/demo/**
+/backups/
 /cache/
 !/cache/
 !/cache/.gitkeep

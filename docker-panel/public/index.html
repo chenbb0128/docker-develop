@@ -535,10 +535,67 @@
             margin: 0;
         }
 
+        .service-pick-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .service-pick-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .service-pick-label {
+            color: var(--gray-500);
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .checkbox-chip.is-required {
+            background: #ecfdf5;
+            border-color: #bbf7d0;
+            color: #065f46;
+            cursor: default;
+        }
+
         .project-help {
             color: var(--gray-500);
             font-size: 11px;
             line-height: 1.5;
+        }
+
+        .project-modal {
+            max-width: 1040px;
+            max-height: 92vh;
+        }
+
+        .project-modal .modal-header {
+            align-items: flex-start;
+            gap: 16px;
+        }
+
+        .project-modal-title {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .project-modal-title small {
+            color: var(--gray-600);
+            font-weight: 400;
+            line-height: 1.5;
+        }
+
+        .project-modal-body {
+            padding: 0;
+        }
+
+        .project-modal .project-form {
+            margin: 0;
+            border: 0;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
         }
 
         .config-center-modal { max-width: 1480px !important; width: min(1480px, calc(100vw - 36px)); max-height: 92vh !important; overflow: hidden; }
@@ -913,6 +970,32 @@
         .project-action-group .btn,
         .container-card-actions .btn { border: 1px solid var(--line) !important; border-radius: 0 !important; }
 
+        .project-services-field { display: grid; gap: 12px; padding: 12px; border: 1px solid var(--line); background: #f8fafc; }
+        .field-heading-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
+        .field-heading-row label { margin: 0; color: var(--ink); font-size: 12px; font-weight: 800; line-height: 1.4; }
+        .field-heading-row span { color: var(--gray-500); font-size: 11px; line-height: 1.5; text-align: right; }
+        .project-services-field .service-pick-panel { display: grid; grid-template-columns: minmax(210px, .78fr) minmax(360px, 1.22fr); gap: 12px; align-items: stretch; }
+        .service-pick-section { display: grid; grid-template-rows: auto 1fr; gap: 8px; min-width: 0; border: 1px solid var(--line); background: #fff; padding: 12px; }
+        .service-pick-section.required { background: #f0fdf4; border-color: #bbf7d0; }
+        .service-pick-section.optional { background: #fff; }
+        .service-pick-label { margin: 0; color: var(--gray-600); font-size: 11px; font-weight: 800; line-height: 1.4; }
+        .service-pick-row { display: flex; flex-wrap: wrap; gap: 8px; min-height: 32px; align-items: flex-start; align-content: flex-start; }
+        .project-services-field .checkbox-chip { max-width: 100%; min-width: 0; min-height: 32px; padding: 7px 10px; border-radius: 999px; background: #fff; border-color: var(--line); color: var(--gray-700); font-size: 12px; font-weight: 700; line-height: 1.2; }
+        .project-services-field .checkbox-chip span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .project-services-field .checkbox-chip:hover { border-color: #b8b8b8; background: #fafafa; }
+        .project-services-field .checkbox-chip.is-checked { background: #eff6ff; border-color: #93c5fd; color: #1d4ed8; }
+        .project-services-field .checkbox-chip:has(input:checked) { background: #eff6ff; border-color: #93c5fd; color: #1d4ed8; }
+        .project-services-field .checkbox-chip.is-required { background: #dcfce7; border-color: #86efac; color: #166534; cursor: default; }
+        .project-services-field .checkbox-chip.is-required::before { content: ""; width: 6px; height: 6px; border-radius: 999px; background: currentColor; flex: 0 0 auto; }
+        .project-services-field .checkbox-chip input { inline-size: 14px; block-size: 14px; flex: 0 0 auto; margin: 0; accent-color: #2563eb; }
+        .service-empty-state { display: inline-flex; align-items: center; min-height: 32px; color: var(--gray-500); font-size: 12px; line-height: 1.4; }
+        .service-custom-row { display: grid; grid-template-columns: 78px minmax(0, 1fr); align-items: stretch; border: 1px solid var(--line); background: #fff; }
+        .service-custom-row span { display: flex; align-items: center; padding: 0 10px; color: var(--gray-500); font-size: 11px; font-weight: 800; border-right: 1px solid var(--line); background: #fafafa; }
+        .service-custom-row input { min-width: 0; border: 0 !important; min-height: 40px; background: #fff; }
+        .service-custom-row input:focus { box-shadow: none !important; }
+        @media (max-width: 900px) { .project-services-field .service-pick-panel { grid-template-columns: 1fr; } }
+        @media (max-width: 760px) { .field-heading-row { align-items: flex-start; flex-direction: column; } .field-heading-row span { text-align: left; } }
+        @media (max-width: 560px) { .service-custom-row { grid-template-columns: 1fr; } .service-custom-row span { min-height: 30px; border-right: 0; border-bottom: 1px solid var(--line); } }
         .project-form { margin: 0 28px 28px; border: 1px solid var(--line); border-radius: 0; background: #fff; }
         .project-form input, .project-form select, .container-search input { border-radius: 0; padding: 10px 12px; }
 
@@ -1012,7 +1095,7 @@
                         </button>
                         <button class="setup-item" onclick="openNewProjectForm()">
                             <span class="setup-index">2</span>
-                            <span class="setup-copy"><strong>新增项目</strong><small>接入 Laravel / Hyperf / Go 项目</small></span>
+                            <span class="setup-copy"><strong>新增项目</strong><small>接入 Laravel / Hyperf / Java / Go 项目</small></span>
                             <span class="setup-arrow">&gt;</span>
                         </button>
                         <button class="setup-item" onclick="showSitePanel()">
@@ -1082,74 +1165,9 @@
                         <button class="btn btn-sm btn-success" onclick="openNewProjectForm()">新增项目</button>
                     </div>
                 </div>
-                <div class="section-note">Laravel/PHP 项目命令优先在配置的 PHP-FPM 服务里执行；workspace 只是备用工具箱。Hyperf 默认使用宿主机端口映射到容器内 9501。</div>
+                <div class="section-note">Laravel/PHP 项目命令优先在配置的 PHP-FPM 服务里执行；Java 和 Go 项目在各自专属容器中执行；workspace 只是备用工具箱。Hyperf 默认使用宿主机端口映射到容器内 9501。</div>
                 <div id="projectList" class="project-grid">
                     Loading...
-                </div>
-                <div id="projectForm" class="project-form">
-                    <div class="project-field project-field-wide">
-                        <label>接入方式</label>
-                        <select id="projectMode" onchange="applyProjectModeVisibility()">
-                            <option value="scaffold">完整接入环境（推荐）</option>
-                            <option value="card">仅添加管理卡片</option>
-                        </select>
-                        <div id="projectModeHint" class="project-help">完整接入会生成项目卡片，并按类型写入 Nginx 或 docker-compose 环境配置；不会修改项目源码。</div>
-                    </div>
-                    <input id="projectKey" placeholder="项目标识，例如 order-api" oninput="handleProjectKeyInput()">
-                    <input id="projectName" placeholder="项目名称，例如 Order API（可留空默认同标识）">
-                    <select id="projectType" onchange="applyProjectTypeDefaults(true)">
-                        <option value="hyperf">Hyperf</option>
-                        <option value="laravel">Laravel</option>
-                        <option value="php-fpm">PHP-FPM</option>
-                        <option value="static">Static</option>
-                    </select>
-                    <select id="projectPhp" onchange="handleProjectPhpChange()">
-                        <option value="php83-fpm">PHP 8.3</option>
-                        <option value="php81-fpm">PHP 8.1</option>
-                        <option value="php80-fpm">PHP 8.0</option>
-                        <option value="php73-fpm">PHP 7.3</option>
-                        <option value="php-fpm">默认 PHP</option>
-                    </select>
-                    <input id="projectPath" placeholder="项目路径，例如 /develop/demo 或 /develop/company/order-api">
-                    <input id="projectPort" type="number" min="1024" max="65535" placeholder="访问端口，例如 9502">
-                    <div class="project-field project-field-wide">
-                        <label>服务（可多选）</label>
-                        <div id="projectServiceOptions" class="checkbox-grid"></div>
-                        <input id="projectServices" placeholder="自定义服务，例如 nginx,php83-fpm,redis" oninput="syncProjectServiceChecksFromText()">
-                        <div class="project-help">常用服务可以直接勾选；如果有自定义 service，也可以在文本框里补充，多个服务用逗号或空格分隔。</div>
-                    </div>
-                    <div id="projectWebOptions" class="project-field project-field-wide">
-                        <label>Nginx 站点选项（Laravel / PHP-FPM / Static）</label>
-                        <input id="projectRoot" placeholder="站点根目录，留空时 Laravel/PHP 默认 public，Static 默认项目路径">
-                        <input id="projectServerName" placeholder="server_name，默认 localhost">
-                        <label style="display:flex;align-items:center;gap:6px;font-weight:400">
-                            <input id="projectForce" type="checkbox" style="width:auto"> 覆盖同名 Nginx 站点配置
-                        </label>
-                        <div class="project-help">只有“完整接入环境”会写入 Nginx 配置；这里不会删除或修改项目源码。</div>
-                    </div>
-                    <select id="projectCommandPreset" onchange="applyProjectCommandPreset()">
-                        <option value="">命令预设（可选）</option>
-                        <option value='if php bin/hyperf.php list 2>/dev/null | grep -q "server:watch"; then php bin/hyperf.php server:watch; else php bin/hyperf.php start; fi'>Hyperf 热更新（推荐）</option>
-                        <option value="php bin/hyperf.php server:watch">Hyperf Watch</option>
-                        <option value="php bin/hyperf.php start">Hyperf Start</option>
-                        <option value="php artisan octane:start --host=0.0.0.0">Laravel Octane</option>
-                        <option value="php artisan serve --host=0.0.0.0">Laravel Serve</option>
-                        <option value="go run .">Go Run</option>
-                    </select>
-                    <input id="projectCommand" placeholder="自定义启动命令，可留空">
-                    <select id="projectLogPreset" onchange="applyProjectLogPreset()">
-                        <option value="">日志预设（可选）</option>
-                        <option value="runtime/logs/hyperf.log">Hyperf 日志</option>
-                        <option value="storage/logs/laravel.log">Laravel 日志</option>
-                        <option value="runtime/logs/app.log">通用 runtime 日志</option>
-                    </select>
-                    <input id="projectLog" placeholder="日志路径，可留空">
-                    <input id="projectUrl" placeholder="访问地址，例如 http://localhost:9502">
-                    <div class="project-field project-field-wide" style="display:flex;flex-direction:row;flex-wrap:wrap;gap:8px">
-                        <button id="projectPreviewBtn" class="btn" style="background:#f3f4f6;color:#374151" onclick="previewProjectConfig()">预览配置</button>
-                        <button id="projectSaveBtn" class="btn btn-success" onclick="saveProject()">生成并保存</button>
-                        <button class="btn" style="background:#f9fafb;color:#374151" onclick="clearProjectForm()">清空</button>
-                    </div>
                 </div>
             </div>
             <!-- 快捷环境面板 -->
@@ -1195,6 +1213,107 @@
         </main>
     </div>
 
+    <!-- 新增项目模态框 -->
+    <div class="modal" id="projectModal">
+        <div class="modal-content project-modal">
+            <div class="modal-header">
+                <div class="project-modal-title">
+                    <h3 id="projectModalTitle">新增项目</h3>
+                    <small id="projectModalSubtitle">接入 Laravel / Hyperf / Java / Go 项目，按类型生成项目卡片和环境配置。</small>
+                </div>
+                <button class="modal-close" onclick="closeProjectModal()">×</button>
+            </div>
+            <div class="modal-body project-modal-body">
+                <div id="projectForm" class="project-form">
+                    <div class="project-field project-field-wide">
+                        <label>接入方式</label>
+                        <select id="projectMode" onchange="applyProjectModeVisibility()">
+                            <option value="scaffold">完整接入环境（推荐）</option>
+                            <option value="card">仅添加管理卡片</option>
+                        </select>
+                        <div id="projectModeHint" class="project-help">完整接入会生成项目卡片，并按类型写入 Nginx 或 docker-compose 环境配置；不会修改项目源码。</div>
+                    </div>
+                    <input id="projectKey" placeholder="项目标识，例如 order-api" oninput="handleProjectKeyInput()">
+                    <input id="projectName" placeholder="项目名称，例如 Order API（可留空默认同标识）">
+                    <select id="projectType" onchange="applyProjectTypeDefaults(true)">
+                        <option value="hyperf">Hyperf</option>
+                        <option value="laravel">Laravel</option>
+                        <option value="php-fpm">PHP-FPM</option>
+                        <option value="static">Static</option>
+                        <option value="java">Java / Spring Boot</option>
+                        <option value="go">Go</option>
+                    </select>
+                    <select id="projectPhp" onchange="handleProjectPhpChange()">
+                        <option value="php83-fpm">PHP 8.3</option>
+                        <option value="php81-fpm">PHP 8.1</option>
+                        <option value="php80-fpm">PHP 8.0</option>
+                        <option value="php73-fpm">PHP 7.3</option>
+                        <option value="php-fpm">默认 PHP</option>
+                    </select>
+                    <input id="projectPath" placeholder="项目路径，例如 /develop/demo 或 /develop/company/order-api">
+                    <input id="projectPort" type="number" min="1024" max="65535" placeholder="访问端口，例如 9502">
+                    <div class="project-field project-field-wide project-services-field">
+                        <div class="field-heading-row">
+                            <label>附加服务</label>
+                            <span>基础服务自动带上，可选服务按需勾选</span>
+                        </div>
+                        <div class="service-pick-panel">
+                            <div class="service-pick-section required">
+                                <div class="service-pick-label">基础服务</div>
+                                <div id="projectBaseServices" class="service-pick-row"></div>
+                            </div>
+                            <div class="service-pick-section optional">
+                                <div class="service-pick-label">可选附加服务</div>
+                                <div id="projectServiceOptions" class="service-pick-row"></div>
+                            </div>
+                        </div>
+                        <div class="service-custom-row">
+                            <span>service</span>
+                            <input id="projectServices" placeholder="自定义 service，例如 redis,mysql,rabbitmq" oninput="syncProjectServiceChecksFromText()">
+                        </div>
+                        <div class="project-help">多个 service 可用逗号或空格分隔；基础服务会保持在列表中。</div>
+                    </div>
+                    <div id="projectWebOptions" class="project-field project-field-wide">
+                        <label>Nginx 站点选项（Laravel / PHP-FPM / Static）</label>
+                        <input id="projectRoot" placeholder="站点根目录，留空时 Laravel/PHP 默认 public，Static 默认项目路径">
+                        <input id="projectServerName" placeholder="server_name，默认 localhost">
+                        <label style="display:flex;align-items:center;gap:6px;font-weight:400">
+                            <input id="projectForce" type="checkbox" style="width:auto"> 覆盖同名 Nginx 站点配置
+                        </label>
+                        <div class="project-help">只有“完整接入环境”会写入 Nginx 配置；这里不会删除或修改项目源码。</div>
+                    </div>
+                    <select id="projectCommandPreset" onchange="applyProjectCommandPreset()">
+                        <option value="">命令预设（可选）</option>
+                        <option value='if php bin/hyperf.php list 2>/dev/null | grep -q "server:watch"; then php bin/hyperf.php server:watch; else php bin/hyperf.php start; fi'>Hyperf 热更新（推荐）</option>
+                        <option value="php bin/hyperf.php server:watch">Hyperf Watch</option>
+                        <option value="php bin/hyperf.php start">Hyperf Start</option>
+                        <option value="php artisan octane:start --host=0.0.0.0">Laravel Octane</option>
+                        <option value="php artisan serve --host=0.0.0.0">Laravel Serve</option>
+                        <option value="go run .">Go Run</option>
+                        <option value='PORT=${SERVER_PORT:-8080}; if [ -f pom.xml ]; then mvn spring-boot:run -Dspring-boot.run.arguments=--server.port=$PORT; elif [ -f ./mvnw ]; then tr -d "\015" < ./mvnw > /tmp/project-mvnw && chmod +x /tmp/project-mvnw && sh /tmp/project-mvnw spring-boot:run -Dspring-boot.run.arguments=--server.port=$PORT; elif [ -f ./gradlew ]; then tr -d "\015" < ./gradlew > /tmp/project-gradlew && chmod +x /tmp/project-gradlew && sh /tmp/project-gradlew bootRun --args=--server.port=$PORT; else echo "No pom.xml, mvnw, or gradlew found"; exit 1; fi'>Java Spring Boot Run</option>
+                        <option value="./mvnw spring-boot:run">Maven Wrapper Run</option>
+                        <option value="mvn spring-boot:run">Maven Run</option>
+                    </select>
+                    <input id="projectCommand" placeholder="自定义启动命令，可留空">
+                    <select id="projectLogPreset" onchange="applyProjectLogPreset()">
+                        <option value="">日志预设（可选）</option>
+                        <option value="runtime/logs/hyperf.log">Hyperf 日志</option>
+                        <option value="storage/logs/laravel.log">Laravel 日志</option>
+                        <option value="runtime/logs/app.log">通用 runtime 日志</option>
+                        <option value="logs/spring.log">Spring Boot 日志</option>
+                    </select>
+                    <input id="projectLog" placeholder="日志路径，可留空">
+                    <input id="projectUrl" placeholder="访问地址，例如 http://localhost:9502">
+                    <div class="project-field project-field-wide" style="display:flex;flex-direction:row;flex-wrap:wrap;gap:8px">
+                        <button id="projectPreviewBtn" class="btn" style="background:#f3f4f6;color:#374151" onclick="previewProjectConfig()">预览配置</button>
+                        <button id="projectSaveBtn" class="btn btn-success" onclick="saveProject()">生成并保存</button>
+                        <button class="btn" style="background:#f9fafb;color:#374151" onclick="clearProjectForm()">清空</button>
+                        <button class="btn" style="background:var(--gray-100);color:var(--gray-800)" onclick="closeProjectModal()">取消</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
     <!-- 日志模态框 -->
     <div class="modal" id="logsModal">
         <div class="modal-content">
@@ -1412,7 +1531,7 @@
                     </label>
                     <label style="display:flex;gap:8px;align-items:flex-start">
                         <input id="deleteRemoveCompose" type="checkbox" style="margin-top:3px">
-                        <span><strong>删除 docker-compose 服务配置块</strong><br><small>删除 docker-compose.yml 中由面板生成的 BEGIN/END Hyperf 项目配置块。</small></span>
+                        <span><strong>删除 docker-compose 服务配置块</strong><br><small>删除 docker-compose.yml 中由面板生成的 BEGIN/END 项目配置块。</small></span>
                     </label>
                 </div>
                 <div id="deleteWebOptions" style="display:none;background:var(--gray-50);border:1px solid var(--gray-200);border-radius:8px;padding:12px;margin-bottom:12px">
@@ -1798,7 +1917,7 @@
         async function startPreset(key) {
             // 显示终端弹窗
             showTerminal(`启动环境: ${key}`);
-            appendTerminal('$ docker-compose up -d ...', 'cmd');
+            appendTerminal('$ docker-compose up -d --no-build || docker-compose build && docker-compose up -d ...', 'cmd');
             appendTerminal('正在启动容器，请稍候...', 'info');
 
             try {
@@ -1807,21 +1926,31 @@
                     body: JSON.stringify({ preset: key })
                 });
 
-                if (data.output) {
-                    appendTerminal(data.output, data.success ? 'stdout' : 'stderr');
+                const task = data.data || {};
+                if (!data.success || !task.taskId) {
+                    appendTerminal('\n❌ 启动失败: ' + (data.error || '任务创建失败'), 'error');
+                    setTerminalStatus('失败', false);
+                    return false;
                 }
 
-                if (data.success) {
+                appendTerminal(`任务 ID：${task.taskId}`, 'info');
+                if (Array.isArray(task.services) && task.services.length) {
+                    appendTerminal(`服务：${task.services.join(', ')}`, 'info');
+                }
+
+                const result = await waitProjectTask(task.taskId, terminalPollToken);
+                if (result.cancelled) return false;
+
+                if (result.success) {
                     appendTerminal('\n✅ 环境启动成功！', 'success');
                     setTerminalStatus('完成', true);
-                    // 刷新
                     setTimeout(() => {
                         loadPresets();
                         loadContainers();
                     }, 1000);
                     return true;
                 } else {
-                    appendTerminal('\n❌ 启动失败: ' + (data.error || ''), 'error');
+                    appendTerminal('\n❌ 启动失败，请查看上方最后一段错误。', 'error');
                     setTerminalStatus('失败', false);
                     return false;
                 }
@@ -1947,7 +2076,7 @@
         }
 
         function projectTypeLabel(type) {
-            const map = { hyperf: 'Hyperf', laravel: 'Laravel', 'php-fpm': 'PHP-FPM', static: 'Static' };
+            const map = { hyperf: 'Hyperf', laravel: 'Laravel', 'php-fpm': 'PHP-FPM', static: 'Static', java: 'Java', go: 'Go' };
             return map[type] || String(type || 'Project');
         }
 
@@ -2060,7 +2189,7 @@
                                     <div class="project-avatar">NEW</div>
                                     <div>
                                         <div class="project-name">还没有项目</div>
-                                        <div class="project-key">点击“新增项目”，把 Laravel / Hyperf / Go 项目接入面板。</div>
+                                        <div class="project-key">点击“新增项目”，把 Laravel / Hyperf / Java / Go 项目接入面板。</div>
                                     </div>
                                 </div>
                             </div>
@@ -2084,7 +2213,7 @@
             const servicesTotal = Number(status.servicesTotal || (project.services || []).length || 0);
             const servicesText = servicesTotal ? `${servicesRunning}/${servicesTotal} 已运行` : '未配置服务';
             const url = project.url || (project.port ? `http://localhost:${project.port}` : '');
-            const runtimeText = project.type === 'hyperf' ? '专属容器 9501' : (project.php ? `PHP 服务：${project.php}` : 'workspace 备用');
+            const runtimeText = project.type === 'hyperf' ? '专属容器 9501' : (project.type === 'java' ? 'Java 容器 ' + (project.port || project.service || 'java') : (project.type === 'go' ? 'Go 容器 8080' : (project.php ? 'PHP 服务：' + project.php : 'workspace 备用')));
             const keyArg = jsArg(project.key || '');
             const urlArg = jsArg(url);
             const services = project.services || [];
@@ -2121,17 +2250,31 @@
                         <div class="project-action-group">
                             <span class="project-action-label">运行控制</span>
                             <button class="btn btn-sm btn-success" onclick="startProject(${keyArg})">启动</button>
-                            ${project.type === 'hyperf' ? `<button class="btn btn-sm" style="background:#fee2e2;color:#991b1b" onclick="stopProject(${keyArg})">停止</button>` : ''}
+                            ${['hyperf', 'java', 'go'].includes(project.type) ? `<button class="btn btn-sm" style="background:#fee2e2;color:#991b1b" onclick="stopProject(${keyArg})">停止</button>` : ''}
                             <button class="btn btn-sm" style="background:#fef3c7;color:#92400e" onclick="restartProject(${keyArg})">重启</button>
                             ${url ? `<button class="btn btn-sm" style="background:#dbeafe;color:#1d4ed8" onclick="window.open(${urlArg},'_blank')">打开</button>` : ''}
                         </div>
-                        <div class="project-action-group">
+                                                <div class="project-action-group">
                             <span class="project-action-label">常用命令</span>
+                            ${project.type === 'java' ? `
+                            <button class="btn btn-sm" style="background:#eef2ff;color:#3730a3" onclick="runProjectCommand(${keyArg}, 'java-version')">Java 版本</button>
+                            <button class="btn btn-sm" style="background:#f3f4f6;color:#374151" onclick="runProjectCommand(${keyArg}, 'maven-version')">Maven</button>
+                            <button class="btn btn-sm" style="background:#ecfdf5;color:#065f46" onclick="runProjectCommand(${keyArg}, 'package')">打包</button>
+                            <button class="btn btn-sm" style="background:#fff7ed;color:#9a3412" onclick="runProjectCommand(${keyArg}, 'test')">测试</button>
+                            <button class="btn btn-sm" style="background:#e0e7ff;color:#3730a3" onclick="showProjectLogs(${keyArg})">日志</button>
+                            ` : project.type === 'go' ? `
+                            <button class="btn btn-sm" style="background:#eef2ff;color:#3730a3" onclick="runProjectCommand(${keyArg}, 'go-version')">Go 版本</button>
+                            <button class="btn btn-sm" style="background:#f3f4f6;color:#374151" onclick="runProjectCommand(${keyArg}, 'go-mod-download')">下载依赖</button>
+                            <button class="btn btn-sm" style="background:#ecfdf5;color:#065f46" onclick="runProjectCommand(${keyArg}, 'build')">构建</button>
+                            <button class="btn btn-sm" style="background:#fff7ed;color:#9a3412" onclick="runProjectCommand(${keyArg}, 'test')">测试</button>
+                            <button class="btn btn-sm" style="background:#e0e7ff;color:#3730a3" onclick="showProjectLogs(${keyArg})">日志</button>
+                            ` : `
                             <button class="btn btn-sm" style="background:#eef2ff;color:#3730a3" onclick="runProjectCommand(${keyArg}, 'php-version')">PHP 版本</button>
                             <button class="btn btn-sm" style="background:#f3f4f6;color:#374151" onclick="runProjectCommand(${keyArg}, 'composer-install')">Composer</button>
                             ${project.type === 'hyperf' || project.type === 'laravel' ? `<button class="btn btn-sm" style="background:#ecfdf5;color:#065f46" onclick="runProjectCommand(${keyArg}, 'migrate')">迁移</button>` : ''}
                             ${project.type === 'hyperf' ? `<button class="btn btn-sm" style="background:#fff7ed;color:#9a3412" onclick="runProjectCommand(${keyArg}, 'di-proxy')">DI 代理</button>` : ''}
                             ${project.type === 'hyperf' ? `<button class="btn btn-sm" style="background:#e0e7ff;color:#3730a3" onclick="showProjectLogs(${keyArg})">日志</button>` : ''}
+                            `}
                             <button class="btn btn-sm" style="background:#111827;color:white" onclick="runCustomProjectCommand(${keyArg})">运行命令</button>
                         </div>
                         <div class="project-action-group">
@@ -2150,23 +2293,41 @@
                 .replace(/</g, '\\u003c');
         }
 
+        function setProjectModalHeader(title, subtitle) {
+            const titleEl = document.getElementById('projectModalTitle');
+            const subtitleEl = document.getElementById('projectModalSubtitle');
+            if (titleEl) titleEl.textContent = title;
+            if (subtitleEl) subtitleEl.textContent = subtitle;
+        }
+
         function toggleProjectForm(forceOpen = null) {
             const form = document.getElementById('projectForm');
-            const shouldOpen = forceOpen === null ? !form.classList.contains('active') : forceOpen;
+            const modal = document.getElementById('projectModal');
+            if (!form) return;
+            const isOpen = modal ? modal.classList.contains('active') : form.classList.contains('active');
+            const shouldOpen = forceOpen === null ? !isOpen : forceOpen;
             form.classList.toggle('active', shouldOpen);
+            if (modal) modal.classList.toggle('active', shouldOpen);
             if (shouldOpen) {
                 renderProjectServiceOptions();
                 applyProjectModeVisibility();
+            } else if (modal?.contains(document.activeElement)) {
+                document.activeElement.blur();
             }
         }
 
+        function closeProjectModal() {
+            toggleProjectForm(false);
+        }
+
         function openNewProjectForm() {
-            const form = document.getElementById('projectForm');
-            if (form.classList.contains('active')) {
-                toggleProjectForm(false);
+            const modal = document.getElementById('projectModal');
+            if (modal?.classList.contains('active')) {
+                closeProjectModal();
                 return;
             }
             clearProjectForm();
+            setProjectModalHeader('新增项目', '接入 Laravel / Hyperf / Java / Go 项目，按类型生成项目卡片和环境配置。');
             toggleProjectForm(true);
             document.getElementById('projectKey')?.focus();
         }
@@ -2195,6 +2356,14 @@
             return `hyperf-${safeServicePart(document.getElementById('projectKey')?.value || 'project')}`;
         }
 
+        function projectJavaServiceName() {
+            return `java-${safeServicePart(document.getElementById('projectKey')?.value || 'project')}`;
+        }
+
+        function projectGoServiceName() {
+            return `go-${safeServicePart(document.getElementById('projectKey')?.value || 'project')}`;
+        }
+
         function parseServiceText(value) {
             return String(value || '').split(/[\s,]+/).map(item => item.trim()).filter(Boolean);
         }
@@ -2207,37 +2376,61 @@
             return ['laravel', 'php-fpm', 'static'].includes(type);
         }
 
-        function defaultProjectServices(type = document.getElementById('projectType').value) {
+        function baseProjectServices(type = document.getElementById('projectType').value) {
             const php = document.getElementById('projectPhp')?.value || 'php83-fpm';
-            if (type === 'hyperf') return [projectHyperfServiceName(), 'redis'];
+            if (type === 'hyperf') return [projectHyperfServiceName()];
+            if (type === 'java') return [projectJavaServiceName()];
+            if (type === 'go') return [projectGoServiceName()];
             if (type === 'static') return ['nginx'];
-            return ['nginx', php, 'redis'];
+            return ['nginx', php];
         }
 
-        function projectServiceChoices(type = document.getElementById('projectType').value) {
-            const php = document.getElementById('projectPhp')?.value || 'php83-fpm';
+        function defaultOptionalProjectServices(type = document.getElementById('projectType').value) {
+            if (type === 'hyperf') return ['redis'];
+            if (type === 'java') return ['redis', 'mysql', 'rabbitmq'];
+            if (type === 'go') return [];
+            if (type === 'static') return [];
+            return ['redis'];
+        }
+
+        function defaultProjectServices(type = document.getElementById('projectType').value) {
+            return uniqueList([...baseProjectServices(type), ...defaultOptionalProjectServices(type)]);
+        }
+
+        function projectOptionalServiceChoices(type = document.getElementById('projectType').value) {
             const choices = [
-                { value: 'nginx', label: 'Nginx' },
                 { value: 'redis', label: 'Redis' },
-                { value: 'php83-fpm', label: 'PHP 8.3' },
-                { value: 'php81-fpm', label: 'PHP 8.1' },
-                { value: 'php80-fpm', label: 'PHP 8.0' },
-                { value: 'php73-fpm', label: 'PHP 7.3' },
-                { value: 'php-fpm', label: '默认 PHP' },
-                { value: 'go', label: 'Go' },
+                { value: 'mysql', label: 'MySQL' },
+                { value: 'rabbitmq', label: 'RabbitMQ' },
+
+
+
             ];
+            if (type === 'static') return [];
+            if (type === 'hyperf' || type === 'java' || type === 'go') return choices;
+            return choices.filter(choice => ['redis', 'mysql'].includes(choice.value));
+        }
 
-            if (type === 'hyperf') {
-                return [
-                    { value: projectHyperfServiceName(), label: 'Hyperf 专属容器' },
-                    { value: 'redis', label: 'Redis' },
-                ];
-            }
-            if (type === 'static') {
-                return [{ value: 'nginx', label: 'Nginx' }];
-            }
+        function projectKnownServices(type = document.getElementById('projectType').value) {
+            return uniqueList([
+                ...baseProjectServices(type),
+                ...projectOptionalServiceChoices(type).map(item => item.value),
+                'nginx', 'php83-fpm', 'php81-fpm', 'php80-fpm', 'php73-fpm', 'php-fpm', 'go', 'java',
+            ]);
+        }
 
-            return choices.map(choice => choice.value === php ? { ...choice, label: `${choice.label}（当前）` } : choice);
+        function projectGeneratedServicePattern(type) {
+            if (type === 'hyperf') return /^hyperf-[a-z0-9_-]+$/i;
+            if (type === 'java') return /^java-[a-z0-9_-]+$/i;
+            if (type === 'go') return /^go-[a-z0-9_-]+$/i;
+            return null;
+        }
+
+        function withoutStaleGeneratedProjectServices(type, services) {
+            const pattern = projectGeneratedServicePattern(type);
+            if (!pattern) return services;
+            const base = new Set(baseProjectServices(type));
+            return services.filter(service => !(pattern.test(service) && !base.has(service)));
         }
 
         function setProjectServices(services, render = true) {
@@ -2247,40 +2440,68 @@
         }
 
         function selectedProjectServices() {
+            const type = document.getElementById('projectType').value;
+            const base = baseProjectServices(type);
             const checked = Array.from(document.querySelectorAll('#projectServiceOptions input:checked')).map(item => item.value);
-            const typed = parseServiceText(document.getElementById('projectServices').value);
-            return uniqueList([...checked, ...typed]);
+            const typed = withoutStaleGeneratedProjectServices(type, parseServiceText(document.getElementById('projectServices').value));
+            const known = new Set(projectKnownServices(type));
+            const custom = typed.filter(item => !known.has(item));
+            return uniqueList([...base, ...checked, ...custom]);
         }
 
         function renderProjectServiceOptions(selected = null) {
             const box = document.getElementById('projectServiceOptions');
+            const baseBox = document.getElementById('projectBaseServices');
             if (!box) return;
             const type = document.getElementById('projectType').value;
-            const selectedValues = selected === null ? parseServiceText(document.getElementById('projectServices').value) : selected;
-            const selectedSet = new Set(selectedValues.length ? selectedValues : defaultProjectServices(type));
-            box.innerHTML = projectServiceChoices(type).map(choice => `
-                <label class="checkbox-chip">
+            const base = baseProjectServices(type);
+            const rawSelectedValues = selected === null ? parseServiceText(document.getElementById('projectServices').value) : selected;
+            const selectedValues = withoutStaleGeneratedProjectServices(type, rawSelectedValues);
+            if (rawSelectedValues.length > 0 && selectedValues.join(',') !== rawSelectedValues.join(',')) {
+                document.getElementById('projectServices').value = uniqueList([...base, ...selectedValues]).join(',');
+            }
+            const hasSavedSelection = selectedValues.length > 0;
+            const selectedSet = new Set(hasSavedSelection ? selectedValues : defaultProjectServices(type));
+            if (baseBox) {
+                baseBox.innerHTML = base.map(service => `
+                    <span class="checkbox-chip is-required">${escapeHtml(service)}</span>
+                `).join('');
+            }
+            const choices = projectOptionalServiceChoices(type);
+            box.innerHTML = choices.length ? choices.map(choice => `
+                <label class="checkbox-chip ${selectedSet.has(choice.value) ? 'is-checked' : ''}">
                     <input type="checkbox" value="${escapeHtml(choice.value)}" ${selectedSet.has(choice.value) ? 'checked' : ''} onchange="updateProjectServicesFromOptions()">
                     <span>${escapeHtml(choice.label)}</span>
                 </label>
-            `).join('');
+            `).join('') : '<span class="service-empty-state">No optional services for this type.</span>';
             updateProjectServicesFromOptions(false);
         }
 
         function updateProjectServicesFromOptions(updateText = true) {
             if (!updateText) return;
+            const type = document.getElementById('projectType').value;
             const checked = Array.from(document.querySelectorAll('#projectServiceOptions input:checked')).map(item => item.value);
-            const typed = parseServiceText(document.getElementById('projectServices').value);
-            const known = new Set(projectServiceChoices().map(item => item.value));
+            const typed = withoutStaleGeneratedProjectServices(type, parseServiceText(document.getElementById('projectServices').value));
+            const known = new Set(projectKnownServices(type));
             const custom = typed.filter(item => !known.has(item));
-            document.getElementById('projectServices').value = uniqueList([...checked, ...custom]).join(',');
+            document.querySelectorAll('#projectServiceOptions input').forEach(input => {
+                input.closest('.checkbox-chip')?.classList.toggle('is-checked', input.checked);
+            });
+            document.getElementById('projectServices').value = uniqueList([...baseProjectServices(type), ...checked, ...custom]).join(',');
         }
 
         function syncProjectServiceChecksFromText() {
-            const selected = new Set(parseServiceText(document.getElementById('projectServices').value));
+            const type = document.getElementById('projectType').value;
+            const selected = new Set(withoutStaleGeneratedProjectServices(type, parseServiceText(document.getElementById('projectServices').value)));
             document.querySelectorAll('#projectServiceOptions input').forEach(input => {
                 input.checked = selected.has(input.value);
+                input.closest('.checkbox-chip')?.classList.toggle('is-checked', input.checked);
             });
+            const services = withoutStaleGeneratedProjectServices(type, parseServiceText(document.getElementById('projectServices').value));
+            const withBase = uniqueList([...baseProjectServices(type), ...services]);
+            if (withBase.join(',') !== services.join(',')) {
+                document.getElementById('projectServices').value = withBase.join(',');
+            }
         }
 
         function handleProjectKeyInput() {
@@ -2288,13 +2509,15 @@
             const name = document.getElementById('projectName');
             if (!name.value.trim()) name.value = key;
 
-            if (document.getElementById('projectType').value !== 'hyperf') {
+            const type = document.getElementById('projectType').value;
+            if (!['hyperf', 'java', 'go'].includes(type)) {
                 suggestProjectPath();
                 return;
             }
-            const current = parseServiceText(document.getElementById('projectServices').value);
-            const hasOnlyDefault = current.length === 0 || current.every(item => item === 'redis' || item.startsWith('hyperf-'));
-            if (hasOnlyDefault) setProjectServices(defaultProjectServices('hyperf'));
+            const current = withoutStaleGeneratedProjectServices(type, parseServiceText(document.getElementById('projectServices').value));
+            const defaultSet = new Set(defaultProjectServices(type));
+            const hasOnlyDefault = current.length === 0 || current.every(item => defaultSet.has(item));
+            if (hasOnlyDefault) setProjectServices(defaultProjectServices(type));
             else renderProjectServiceOptions(current);
 
             suggestProjectPath();
@@ -2303,7 +2526,7 @@
         function handleProjectPhpChange() {
             const type = document.getElementById('projectType').value;
             if (type === 'laravel' || type === 'php-fpm') {
-                const current = parseServiceText(document.getElementById('projectServices').value);
+                const current = withoutStaleGeneratedProjectServices(type, parseServiceText(document.getElementById('projectServices').value));
                 const withoutPhp = current.filter(item => !/^php(73|80|81|83)?-fpm$/.test(item));
                 setProjectServices(uniqueList([...withoutPhp, document.getElementById('projectPhp').value]));
             } else {
@@ -2350,6 +2573,10 @@
                 hint.textContent = '仅保存面板管理卡片，不生成 Nginx 或 docker-compose 配置；适合环境已经手动配置好的项目。';
             } else if (type === 'hyperf') {
                 hint.textContent = '完整接入会生成项目卡片和 Hyperf 专属 docker-compose 服务，端口映射到容器内 9501；不会修改项目源码。';
+            } else if (type === 'java') {
+                hint.textContent = '完整接入会生成 Java 专属 docker-compose 服务，启动时会一并拉起 Redis / MySQL / RabbitMQ；你填写的端口会同时映射到宿主机和应用监听端口，不会修改项目源码。';
+            } else if (type === 'go') {
+                hint.textContent = '完整接入会生成 Go 专属 docker-compose 服务；宿主机使用填写的端口，容器内监听 8080，并自动启动你勾选的依赖服务，不需要 Nginx。';
             } else {
                 hint.textContent = '完整接入会生成项目卡片、Nginx 站点配置和端口映射；不会修改项目源码。';
             }
@@ -2360,13 +2587,25 @@
             const type = document.getElementById('projectType').value;
             const php = document.getElementById('projectPhp');
             const hasServices = parseServiceText(document.getElementById('projectServices').value).length > 0;
-            php.disabled = type === 'static';
+            php.disabled = type === 'static' || type === 'java' || type === 'go';
 
             if (type === 'hyperf') {
                 if (reset || !document.getElementById('projectPort').value) document.getElementById('projectPort').value = '9502';
                 if (reset || !document.getElementById('projectCommand').value) document.getElementById('projectCommand').value = 'if php bin/hyperf.php list 2>/dev/null | grep -q "server:watch"; then php bin/hyperf.php server:watch; else php bin/hyperf.php start; fi';
                 if (reset || !document.getElementById('projectLog').value) document.getElementById('projectLog').value = 'runtime/logs/hyperf.log';
                 if (reset || !hasServices) setProjectServices(defaultProjectServices('hyperf'));
+                else renderProjectServiceOptions(parseServiceText(document.getElementById('projectServices').value));
+            } else if (type === 'java') {
+                if (reset || !document.getElementById('projectPort').value) document.getElementById('projectPort').value = '8080';
+                if (reset || !document.getElementById('projectCommand').value) document.getElementById('projectCommand').value = 'PORT=${SERVER_PORT:-8080}; if [ -f pom.xml ]; then mvn spring-boot:run -Dspring-boot.run.arguments=--server.port=$PORT; elif [ -f ./mvnw ]; then tr -d "\\015" < ./mvnw > /tmp/project-mvnw && chmod +x /tmp/project-mvnw && sh /tmp/project-mvnw spring-boot:run -Dspring-boot.run.arguments=--server.port=$PORT; elif [ -f ./gradlew ]; then tr -d "\\015" < ./gradlew > /tmp/project-gradlew && chmod +x /tmp/project-gradlew && sh /tmp/project-gradlew bootRun --args=--server.port=$PORT; else echo "No pom.xml, mvnw, or gradlew found"; exit 1; fi';
+                if (reset || !document.getElementById('projectLog').value) document.getElementById('projectLog').value = 'logs/spring.log';
+                if (reset || !hasServices) setProjectServices(defaultProjectServices('java'));
+                else renderProjectServiceOptions(parseServiceText(document.getElementById('projectServices').value));
+            } else if (type === 'go') {
+                if (reset || !document.getElementById('projectPort').value) document.getElementById('projectPort').value = '8081';
+                if (reset) document.getElementById('projectCommand').value = '';
+                if (reset) document.getElementById('projectLog').value = '';
+                if (reset || !hasServices) setProjectServices(defaultProjectServices('go'));
                 else renderProjectServiceOptions(parseServiceText(document.getElementById('projectServices').value));
             } else if (type === 'laravel' || type === 'php-fpm') {
                 if (reset || !document.getElementById('projectPort').value) document.getElementById('projectPort').value = '8002';
@@ -2588,8 +2827,9 @@
             document.getElementById('projectForce').checked = false;
             document.getElementById('projectCommandPreset').value = '';
             document.getElementById('projectLogPreset').value = '';
-            document.getElementById('projectPhp').disabled = (project.type || '') === 'static';
+            document.getElementById('projectPhp').disabled = ['static', 'java', 'go'].includes(project.type || '');
             setProjectServices(project.services || defaultProjectServices(project.type || 'hyperf'));
+            setProjectModalHeader('编辑项目', `更新 ${project.name || project.key || '项目'} 的面板卡片配置。`);
             applyProjectModeVisibility();
             toggleProjectForm(true);
         }
@@ -2608,16 +2848,19 @@
             pendingProjectDelete = project;
             const isHyperf = project.type === 'hyperf';
             const isWeb = project.type === 'laravel' || project.type === 'php-fpm' || project.type === 'static';
+            const isJava = project.type === 'java';
+            const isGo = project.type === 'go';
+            const isDedicated = isHyperf || isJava || isGo;
 
             document.getElementById('deleteProjectName').textContent = project.name || project.key || '';
             document.getElementById('deleteProjectKey').textContent = project.key || '';
             document.getElementById('deleteProjectType').textContent = (project.type || 'project').toUpperCase();
             document.getElementById('deleteProjectPath').textContent = project.path || '';
-            document.getElementById('deleteRemoveContainer').checked = isHyperf;
-            document.getElementById('deleteRemoveCompose').checked = isHyperf;
+            document.getElementById('deleteRemoveContainer').checked = isDedicated;
+            document.getElementById('deleteRemoveCompose').checked = isDedicated;
             document.getElementById('deleteRemoveSite').checked = false;
             document.getElementById('deleteRemovePort').checked = false;
-            document.getElementById('deleteDedicatedOptions').style.display = isHyperf ? 'block' : 'none';
+            document.getElementById('deleteDedicatedOptions').style.display = isDedicated ? 'block' : 'none';
             document.getElementById('deleteWebOptions').style.display = isWeb ? 'block' : 'none';
             document.getElementById('projectDeleteModal').classList.add('active');
         }
@@ -2638,8 +2881,8 @@
                 removeNginxPort: document.getElementById('deleteRemovePort').checked,
             };
 
-            const isHyperf = project.type === 'hyperf';
-            if (!isHyperf) {
+            const isDedicated = ['hyperf', 'java', 'go'].includes(project.type);
+            if (!isDedicated) {
                 payload.removeContainer = false;
                 payload.removeCompose = false;
             }
@@ -2681,13 +2924,15 @@
             return /no such service/i.test(String(message || ''));
         }
 
-        async function repairHyperfEnvironment(key) {
+        async function repairDedicatedProjectEnvironment(key) {
             const data = await api('/projects');
             const project = (data.projects || []).find(item => item.key === key);
-            if (!project || project.type !== 'hyperf') return false;
+            if (!project || !['hyperf', 'java', 'go'].includes(project.type)) return false;
 
-            appendTerminal('检测到 Hyperf compose 服务缺失，正在重新生成环境配置...', 'info');
-            const result = await scaffoldHyperfProject(project, false);
+            appendTerminal('检测到 ' + projectTypeLabel(project.type) + ' compose 服务缺失，正在重新生成环境配置...', 'info');
+            const result = project.type !== 'hyperf'
+                ? await scaffoldProjectEnvironment(project, false)
+                : await scaffoldHyperfProject(project, false);
             const payload = result.data || {};
             (payload.actions || []).forEach(item => appendTerminal('- ' + item, 'stdout'));
             (payload.nextSteps || []).forEach(item => appendTerminal(item, 'cmd'));
@@ -2744,7 +2989,7 @@
             appendTerminal(`$ project ${action} ${key}`, 'cmd');
             appendTerminal('已切换到实时任务日志，下面会显示真实执行步骤。', 'info');
             if (action === 'start') {
-                appendTerminal('第一次启动时会自动构建镜像；如果项目缺少 vendor，会先执行 composer install。', 'info');
+                appendTerminal('第一次启动时会自动构建镜像；Hyperf 缺 vendor 会自动 composer install；Java 会启动专属容器并一并拉起 Redis / MySQL / RabbitMQ，Spring Boot 监听你填写的端口。', 'info');
             }
 
             try {
@@ -2774,7 +3019,7 @@
 
                 const message = result.output || '操作失败';
                 if (!retried && isMissingComposeServiceError(message)) {
-                    if (await repairHyperfEnvironment(key)) {
+                    if (await repairDedicatedProjectEnvironment(key)) {
                         return runProjectActionTask(key, action, true);
                     }
                 }
@@ -2785,7 +3030,7 @@
                 const message = e.message || '操作失败';
                 if (!retried && isMissingComposeServiceError(message)) {
                     try {
-                        if (await repairHyperfEnvironment(key)) {
+                        if (await repairDedicatedProjectEnvironment(key)) {
                             return runProjectActionTask(key, action, true);
                         }
                     } catch (repairError) {

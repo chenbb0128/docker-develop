@@ -104,6 +104,7 @@ class DockerService
                 'status' => $c['Status'],
                 'ports' => implode(', ', $ports),
                 'created' => date('Y-m-d H:i:s', $c['Created']),
+                'labels' => $c['Labels'] ?? [],
             ];
         }, $containers);
     }

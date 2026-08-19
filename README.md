@@ -133,7 +133,15 @@ docker-compose build 项目服务名
 docker-compose up -d 项目服务名 redis docker-panel
 ```
 
-如果 Docker Hub 拉取基础镜像很慢，可以在本机 `.env` 里把下面两个值改成自己的镜像代理地址，不需要改 Dockerfile：
+如果 Docker Hub 拉取基础镜像很慢，优先在 Docker Desktop 或 Docker daemon 里配置 `registry-mirrors`。阿里云镜像加速器属于 daemon 级配置，不是 Dockerfile 的 `FROM` 前缀，所以不要把 `BASE_IMAGE_REGISTRY` 写成 `registry.cn-hangzhou.aliyuncs.com/library/`。
+
+`.env` 里的 `BASE_IMAGE_REGISTRY` 默认保持为空。只有当你有自己的 ACR 命名空间或镜像代理，并且它按同名路径提供 `nginx`、`php`、`redis` 等镜像时，才设置这个值：
+
+```env
+BASE_IMAGE_REGISTRY=registry.example.com/library/
+```
+
+面板自身镜像也可以单独改成可访问的镜像别名：
 
 ```env
 DOCKER_PANEL_PHP_IMAGE=php:8.3-cli-alpine

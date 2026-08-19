@@ -1,4 +1,5 @@
-FROM redis:7.2-alpine
+ARG BASE_IMAGE_REGISTRY=
+FROM ${BASE_IMAGE_REGISTRY}redis:7.2-alpine
 
 RUN mkdir -p /usr/local/etc/redis
 COPY redis.conf /usr/local/etc/redis/redis.conf

@@ -1,5 +1,6 @@
 ARG GO_VERSION=1.25
-FROM golang:${GO_VERSION}-bookworm
+ARG BASE_IMAGE_REGISTRY=
+FROM ${BASE_IMAGE_REGISTRY}golang:${GO_VERSION}-bookworm
 
 LABEL maintainer="Docker Develop"
 
@@ -8,11 +9,24 @@ ARG PUID=1000
 ARG PGID=1000
 ARG CONTAINER_PROJECT_PATH=/develop
 ARG INSTALL_DELVE=false
+ARG CHANGE_SOURCE=true
 
 ENV GO111MODULE=on \
     GOPROXY=${GOPROXY} \
     CGO_ENABLED=1 \
+    GOTOOLCHAIN=auto \
+    GOMODCACHE=/go/pkg/mod \
+    GOCACHE=/home/developer/.cache/go-build \
     PATH=/go/bin:/usr/local/go/bin:${PATH}
+
+RUN if [ "${CHANGE_SOURCE}" = "true" ]; then \
+        if [ -f /etc/apt/sources.list.d/debian.sources ]; then \
+            sed -i 's#deb.debian.org#mirrors.aliyun.com#g; s#security.debian.org#mirrors.aliyun.com#g' /etc/apt/sources.list.d/debian.sources; \
+        fi; \
+        if [ -f /etc/apt/sources.list ]; then \
+            sed -i 's#deb.debian.org#mirrors.aliyun.com#g; s#security.debian.org#mirrors.aliyun.com#g' /etc/apt/sources.list; \
+        fi; \
+    fi
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \

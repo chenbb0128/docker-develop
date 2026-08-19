@@ -175,35 +175,32 @@ class SiteController extends AbstractController
      */
     private function addPortToCompose(int $port): bool
     {
-        $content = file_get_contents($this->composePath);
-
-        // 查找 nginx 服务的 ports 部分
-        // 在 "7002:7002" 后面添加新端口
-        $pattern = '/(\s*-\s*"7002:7002")/';
-        $replacement = "$1\n      - \"{$port}:{$port}\"";
-
-        $newContent = preg_replace($pattern, $replacement, $content, 1, $count);
-
-        if ($count > 0) {
-            file_put_contents($this->composePath, $newContent);
-            return true;
+        $content = (string) file_get_contents($this->composePath);
+        $portText = '"' . $port . ':' . $port . '"';
+        if (str_contains($content, $portText)) {
+            return false;
         }
 
-        // 备用方案：在 "443:443" 后面添加
-        $pattern2 = '/(\s*-\s*"\$\{NGINX_HOST_HTTPS_PORT\}:443")/';
-        $replacement2 = "$1\n      - \"{$port}:{$port}\"";
-        $newContent2 = preg_replace($pattern2, $replacement2, $content, 1, $count2);
+        $pattern = '/(  nginx:\R(?:(?!^  [a-zA-Z0-9_-]+:).)*?    ports:\R)((?:      - .*\R)+)/ms';
+        $newContent = preg_replace_callback($pattern, function (array $matches) use ($port): string {
+            $ports = $matches[2];
+            if (str_contains($ports, '"' . $port . ':' . $port . '"')) {
+                return $matches[0];
+            }
 
-        if ($count2 > 0) {
-            file_put_contents($this->composePath, $newContent2);
-            return true;
+            return $matches[1] . rtrim($ports, "\r\n") . PHP_EOL . '      - "' . $port . ':' . $port . '"' . PHP_EOL;
+        }, $content, 1, $count);
+
+        if ($count !== 1 || $newContent === null) {
+            return false;
         }
 
-        return false;
+        file_put_contents($this->composePath, $newContent);
+        return true;
     }
 
     /**
-     * 删除站点
+     * Delete site config.
      */
     #[RequestMapping(path: '/api/sites/{filename}', methods: 'DELETE')]
     public function deleteSite(string $filename)

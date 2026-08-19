@@ -11,6 +11,10 @@ volumes:
     driver: ${VOLUMES_DRIVER}
   go-build-cache:
     driver: ${VOLUMES_DRIVER}
+  maven-cache:
+    driver: ${VOLUMES_DRIVER}
+  gradle-cache:
+    driver: ${VOLUMES_DRIVER}
 
 #---------------------------------------------
 # YAML Extension Fields (共享配置锚点)
@@ -78,15 +82,20 @@ services:
         - PGID=${WORKSPACE_PGID}
         - TZ=${TIMEZONE}
         - CONTAINER_PROJECT_PATH=${CONTAINER_PROJECT_PATH}
+        - BASE_IMAGE_REGISTRY=${BASE_IMAGE_REGISTRY}
     volumes:
       - ${HOST_PROJECT_PATH}:${CONTAINER_PROJECT_PATH}
-      - ./services/workspace/supervisord.d:/etc/supervisor/conf.d
+      - ${DOCKER_DEVELOP_HOST_PATH:-.}/services/workspace/supervisord.d:/etc/supervisor/conf.d
     extra_hosts:
       - "dockerhost:${DOCKER_HOST_IP}"
     tty: true
     networks:
       - frontend
       - backend
+
+
+
+
 
 # BEGIN Hyperf project: hyperf-classmateserver
 
@@ -114,7 +123,7 @@ services:
         - TZ=${TIMEZONE}
         - CONTAINER_PROJECT_PATH=${CONTAINER_PROJECT_PATH}
     working_dir: '/develop/Hua/Projects/ClassMate/ClassMateServer'
-    command: sh -lc 'git config --global --add safe.directory "$$PWD" 2>/dev/null || true; if [ -f composer.json ] && [ ! -f vendor/autoload.php ]; then composer install --no-interaction --prefer-dist; fi; if [ ! -f bin/hyperf.php ]; then echo "Hyperf entry file missing."; echo "Check HOST_PROJECT_PATH in .env and the project path /develop/Hua/Projects/ClassMate/ClassMateServer."; exit 66; fi; if php bin/hyperf.php list 2>/dev/null | grep -q "server:watch"; then php bin/hyperf.php server:watch; else php bin/hyperf.php start; fi'
+    command: sh -lc 'git config --global --add safe.directory "$$PWD" 2>/dev/null || true; if [ -f composer.json ] && [ ! -f vendor/autoload.php ]; then composer install --no-interaction --prefer-dist; fi; if [ ! -f bin/hyperf.php ]; then echo "Hyperf entry file missing."; echo "Check HOST_PROJECT_PATH in .env and the project path."; exit 66; fi; if php bin/hyperf.php list 2>/dev/null | grep -q "server:watch"; then php bin/hyperf.php server:watch; else php bin/hyperf.php start; fi'
     volumes:
       - ${HOST_PROJECT_PATH}:${CONTAINER_PROJECT_PATH}
     extra_hosts:
@@ -129,6 +138,61 @@ services:
       - backend
 # END Hyperf project: hyperf-classmateserver
 
+
+# BEGIN Java project: java-hoodly-joy-service
+
+  java-hoodly-joy-service:
+    build:
+      context: ./services/java
+      args:
+        - JAVA_VERSION=${JAVA_VERSION}
+        - MAVEN_VERSION=${MAVEN_VERSION}
+        - MAVEN_MIRROR=${MAVEN_MIRROR}
+        - PUID=${JAVA_PUID}
+        - PGID=${JAVA_PGID}
+        - CONTAINER_PROJECT_PATH=${CONTAINER_PROJECT_PATH}
+    working_dir: '/develop/Hua/Projects/hoodly-joy/hoodly-joy-service'
+    command: sh -lc 'export SERVER_PORT=8003; export PORT=8003; PORT=$${SERVER_PORT:-8080}; if [ -f pom.xml ]; then mvn spring-boot:run -Dspring-boot.run.arguments=--server.port=$$PORT; elif [ -f ./mvnw ]; then tr -d "\015" < ./mvnw > /tmp/project-mvnw && chmod +x /tmp/project-mvnw && sh /tmp/project-mvnw spring-boot:run -Dspring-boot.run.arguments=--server.port=$$PORT; elif [ -f ./gradlew ]; then tr -d "\015" < ./gradlew > /tmp/project-gradlew && chmod +x /tmp/project-gradlew && sh /tmp/project-gradlew bootRun --args=--server.port=$$PORT; else echo "No pom.xml, mvnw, or gradlew found"; exit 1; fi'
+    volumes:
+      - ${HOST_PROJECT_PATH}:${CONTAINER_PROJECT_PATH}
+      - maven-cache:/home/developer/.m2
+      - gradle-cache:/home/developer/.gradle
+    environment:
+      - TZ=${TIMEZONE}
+      - SERVER_PORT=8003
+      - PORT=8003
+      - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS}
+      - MAVEN_OPTS=${MAVEN_OPTS}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_NAME=${MYSQL_DATABASE}
+      - DB_USERNAME=root
+      - DB_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USERNAME=guest
+      - RABBITMQ_PASSWORD=guest
+    ports:
+      - "8003:8003"
+    extra_hosts:
+      - "dockerhost:${DOCKER_HOST_IP}"
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      redis:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    tty: true
+    networks:
+      - frontend
+      - backend
+# END Java project: java-hoodly-joy-service
+
 #---------------------------------------------
 # Docker 管理面板 (Hyperf + Swoole)
 #---------------------------------------------
@@ -142,10 +206,11 @@ services:
         - DOCKER_PANEL_PHP_IMAGE=${DOCKER_PANEL_PHP_IMAGE:-php:8.3-cli-alpine}
         - DOCKER_PANEL_COMPOSER_IMAGE=${DOCKER_PANEL_COMPOSER_IMAGE:-composer:2}
         - COMPOSER_REPO_PACKAGIST=${WORKSPACE_COMPOSER_REPO_PACKAGIST}
+        - BASE_IMAGE_REGISTRY=${BASE_IMAGE_REGISTRY}
     volumes:
-      - ./docker-panel:/var/www/docker-panel
+      - ${DOCKER_DEVELOP_HOST_PATH:-.}/docker-panel:/var/www/docker-panel
       - /var/run/docker.sock:/var/run/docker.sock
-      - ./:/var/www/docker-develop
+      - ${DOCKER_DEVELOP_HOST_PATH:-.}:/var/www/docker-develop
     working_dir: /var/www/docker-panel
     command: sh -lc 'tr -d "\r" < start-panel.sh > /tmp/start-panel.sh && exec sh /tmp/start-panel.sh'
     ports:
@@ -191,11 +256,13 @@ services:
         - CONTAINER_PROJECT_PATH=${CONTAINER_PROJECT_PATH}
         - INSTALL_COMPOSER=${INSTALL_COMPOSER}
         - COMPOSER_REPO_PACKAGIST=${WORKSPACE_COMPOSER_REPO_PACKAGIST}
+        - BASE_IMAGE_REGISTRY=${BASE_IMAGE_REGISTRY}
+        - PHP_BASE_IMAGE_REGISTRY=${PHP_BASE_IMAGE_REGISTRY}
     volumes:
       - ${HOST_PROJECT_PATH}:${CONTAINER_PROJECT_PATH}
-      - ./services/php-fpm/php${PHP_VERSION}.ini:/usr/local/etc/php/php.ini
+      - ${DOCKER_DEVELOP_HOST_PATH:-.}/services/php-fpm/php${PHP_VERSION}.ini:/usr/local/etc/php/php.ini
       - /var/run/docker.sock:/var/run/docker.sock
-      - ./docker-panel:/var/www/docker-panel
+      - ${DOCKER_DEVELOP_HOST_PATH:-.}/docker-panel:/var/www/docker-panel
 
 ### PHP 7.3 #########################################
   php73-fpm:
@@ -228,9 +295,11 @@ services:
         - CONTAINER_PROJECT_PATH=${CONTAINER_PROJECT_PATH}
         - INSTALL_COMPOSER=${INSTALL_COMPOSER}
         - COMPOSER_REPO_PACKAGIST=${WORKSPACE_COMPOSER_REPO_PACKAGIST}
+        - BASE_IMAGE_REGISTRY=${BASE_IMAGE_REGISTRY}
+        - PHP_BASE_IMAGE_REGISTRY=${PHP_BASE_IMAGE_REGISTRY}
     volumes:
       - ${HOST_PROJECT_PATH}:${CONTAINER_PROJECT_PATH}
-      - ./services/php-fpm/php7.3.ini:/usr/local/etc/php/php.ini
+      - ${DOCKER_DEVELOP_HOST_PATH:-.}/services/php-fpm/php7.3.ini:/usr/local/etc/php/php.ini
 
 ### PHP 8.0 #########################################
   php80-fpm:
@@ -263,9 +332,11 @@ services:
         - CONTAINER_PROJECT_PATH=${CONTAINER_PROJECT_PATH}
         - INSTALL_COMPOSER=${INSTALL_COMPOSER}
         - COMPOSER_REPO_PACKAGIST=${WORKSPACE_COMPOSER_REPO_PACKAGIST}
+        - BASE_IMAGE_REGISTRY=${BASE_IMAGE_REGISTRY}
+        - PHP_BASE_IMAGE_REGISTRY=${PHP_BASE_IMAGE_REGISTRY}
     volumes:
       - ${HOST_PROJECT_PATH}:${CONTAINER_PROJECT_PATH}
-      - ./services/php-fpm/php8.0.ini:/usr/local/etc/php/php.ini
+      - ${DOCKER_DEVELOP_HOST_PATH:-.}/services/php-fpm/php8.0.ini:/usr/local/etc/php/php.ini
 
 ### PHP 8.1 #########################################
   php81-fpm:
@@ -298,9 +369,11 @@ services:
         - CONTAINER_PROJECT_PATH=${CONTAINER_PROJECT_PATH}
         - INSTALL_COMPOSER=${INSTALL_COMPOSER}
         - COMPOSER_REPO_PACKAGIST=${WORKSPACE_COMPOSER_REPO_PACKAGIST}
+        - BASE_IMAGE_REGISTRY=${BASE_IMAGE_REGISTRY}
+        - PHP_BASE_IMAGE_REGISTRY=${PHP_BASE_IMAGE_REGISTRY}
     volumes:
       - ${HOST_PROJECT_PATH}:${CONTAINER_PROJECT_PATH}
-      - ./services/php-fpm/php8.1.ini:/usr/local/etc/php/php.ini
+      - ${DOCKER_DEVELOP_HOST_PATH:-.}/services/php-fpm/php8.1.ini:/usr/local/etc/php/php.ini
 
 ### PHP 8.3 #########################################
   php83-fpm:
@@ -333,9 +406,66 @@ services:
         - CONTAINER_PROJECT_PATH=${CONTAINER_PROJECT_PATH}
         - INSTALL_COMPOSER=${INSTALL_COMPOSER}
         - COMPOSER_REPO_PACKAGIST=${WORKSPACE_COMPOSER_REPO_PACKAGIST}
+        - BASE_IMAGE_REGISTRY=${BASE_IMAGE_REGISTRY}
+        - PHP_BASE_IMAGE_REGISTRY=${PHP_BASE_IMAGE_REGISTRY}
     volumes:
       - ${HOST_PROJECT_PATH}:${CONTAINER_PROJECT_PATH}
-      - ./services/php-fpm/php8.3.ini:/usr/local/etc/php/php.ini
+      - ${DOCKER_DEVELOP_HOST_PATH:-.}/services/php-fpm/php8.3.ini:/usr/local/etc/php/php.ini
+
+
+
+# BEGIN Go project: go-hoodly-joy-go
+
+  go-hoodly-joy-go:
+    build:
+      context: ./services/go
+      args:
+        - GO_VERSION=${GO_VERSION}
+        - GOPROXY=${GOPROXY}
+        - PUID=${GO_PUID}
+        - PGID=${GO_PGID}
+        - CONTAINER_PROJECT_PATH=${CONTAINER_PROJECT_PATH}
+        - INSTALL_DELVE=${GO_INSTALL_DELVE}
+        - CHANGE_SOURCE=${CHANGE_SOURCE}
+        - BASE_IMAGE_REGISTRY=${BASE_IMAGE_REGISTRY}
+    working_dir: '/develop/Hua/Projects/hoodly-joy/go-service'
+    command: sh -c 'export PATH=/go/bin:/usr/local/go/bin:$$PATH; PORT=$${PORT:-8080}; export PORT; SERVER_PORT=$${SERVER_PORT:-$$PORT}; export SERVER_PORT; if [ ! -f go.mod ]; then echo "go.mod not found"; exit 1; fi; go mod download; if [ -f main.go ]; then exec go run .; elif [ -d cmd/server ]; then exec go run ./cmd/server; elif [ -d cmd/api ]; then exec go run ./cmd/api; elif [ -d cmd/app ]; then exec go run ./cmd/app; else MAIN_PACKAGE=$$(go list -f "{{if eq .Name \"main\"}}{{.ImportPath}}{{end}}" ./... 2>/dev/null | sed -n "/./{p;q;}"); if [ -z "$$MAIN_PACKAGE" ]; then echo "No Go main package found"; exit 1; fi; exec go run "$$MAIN_PACKAGE"; fi'
+    volumes:
+      - ${HOST_PROJECT_PATH}:${CONTAINER_PROJECT_PATH}
+      - go-mod-cache:/go/pkg/mod
+      - go-build-cache:/home/developer/.cache/go-build
+    environment:
+      - TZ=${TIMEZONE}
+      - GO111MODULE=on
+      - GOPROXY=${GOPROXY}
+      - CGO_ENABLED=${GO_CGO_ENABLED}
+      - PORT=8080
+      - SERVER_PORT=8080
+      - APP_PORT=8080
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_NAME=${MYSQL_DATABASE}
+      - DB_USERNAME=root
+      - DB_PASSWORD=${MYSQL_ROOT_PASSWORD}
+    ports:
+      - "8004:8080"
+    extra_hosts:
+      - "dockerhost:${DOCKER_HOST_IP}"
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      redis:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+    tty: true
+    networks:
+      - frontend
+      - backend
+# END Go project: go-hoodly-joy-go
+
 
 #---------------------------------------------
 # Go Development Environment
@@ -352,6 +482,8 @@ services:
         - PGID=${GO_PGID}
         - CONTAINER_PROJECT_PATH=${CONTAINER_PROJECT_PATH}
         - INSTALL_DELVE=${GO_INSTALL_DELVE}
+        - CHANGE_SOURCE=${CHANGE_SOURCE}
+        - BASE_IMAGE_REGISTRY=${BASE_IMAGE_REGISTRY}
     working_dir: ${CONTAINER_PROJECT_PATH}
     command: tail -f /dev/null
     volumes:
@@ -374,6 +506,44 @@ services:
       - frontend
       - backend
 
+
+#---------------------------------------------
+# Java Development Environment
+#---------------------------------------------
+
+### Java Development #######################################
+  java:
+    build:
+      context: ./services/java
+      args:
+        - JAVA_VERSION=${JAVA_VERSION}
+        - MAVEN_VERSION=${MAVEN_VERSION}
+        - MAVEN_MIRROR=${MAVEN_MIRROR}
+        - PUID=${JAVA_PUID}
+        - PGID=${JAVA_PGID}
+        - CONTAINER_PROJECT_PATH=${CONTAINER_PROJECT_PATH}
+        - BASE_IMAGE_REGISTRY=${BASE_IMAGE_REGISTRY}
+    working_dir: ${CONTAINER_PROJECT_PATH}
+    command: tail -f /dev/null
+    volumes:
+      - ${HOST_PROJECT_PATH}:${CONTAINER_PROJECT_PATH}
+      - maven-cache:/home/developer/.m2
+      - gradle-cache:/home/developer/.gradle
+    environment:
+      - TZ=${TIMEZONE}
+      - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS}
+      - MAVEN_OPTS=${MAVEN_OPTS}
+    ports:
+      - "${JAVA_HOST_PORT}:8080"
+      - "${JAVA_DEBUG_PORT}:5005"
+    extra_hosts:
+      - "dockerhost:${DOCKER_HOST_IP}"
+      - "host.docker.internal:host-gateway"
+    tty: true
+    networks:
+      - frontend
+      - backend
+
 #---------------------------------------------
 # Web Server
 #---------------------------------------------
@@ -386,6 +556,7 @@ services:
         - CHANGE_SOURCE=${CHANGE_SOURCE}
         - PHP_UPSTREAM_CONTAINER=${NGINX_PHP_UPSTREAM_CONTAINER}
         - PHP_UPSTREAM_PORT=${NGINX_PHP_UPSTREAM_PORT}
+        - BASE_IMAGE_REGISTRY=${BASE_IMAGE_REGISTRY}
     environment:
       - PHP_UPSTREAM_CONTAINER=${NGINX_PHP_UPSTREAM_CONTAINER}
       - PHP_UPSTREAM_PORT=${NGINX_PHP_UPSTREAM_PORT}
@@ -393,9 +564,9 @@ services:
       - ${NGINX_HOST_LOG_PATH}:/var/log/nginx
       - ${NGINX_SITES_PATH}:/etc/nginx/sites
       - ${NGINX_SSL_PATH}:/etc/nginx/ssl
-      - ./services/nginx/startup.sh:/opt/startup.sh
+      - ${DOCKER_DEVELOP_HOST_PATH:-.}/services/nginx/startup.sh:/opt/startup.sh
       - ${HOST_PROJECT_PATH}:${CONTAINER_PROJECT_PATH}
-      - ./docker-panel:/var/www/docker-panel
+      - ${DOCKER_DEVELOP_HOST_PATH:-.}/docker-panel:/var/www/docker-panel
     ports:
       - "${NGINX_HOST_HTTP_PORT}:80"
       - "${NGINX_HOST_HTTPS_PORT}:443"
@@ -416,24 +587,28 @@ services:
 #---------------------------------------------
 
 ### MySQL ################################################
-#  mysql:
-#    build:
-#      context: ./services/mysql
-#      args:
-#        - MYSQL_VERSION=${MYSQL_VERSION}
-#    environment:
-#      - MYSQL_DATABASE=${MYSQL_DATABASE}
-#      # - MYSQL_USER=${MYSQL_USER}
-#      # - MYSQL_PASSWORD=${MYSQL_PASSWORD}
-#      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
-#      - TZ=${TIMEZONE}
-#    volumes:
-#      - ${DATA_PATH}/mysql:/var/lib/mysql
-#      - ${MYSQL_ENTRYPOINT_INITDB}:/docker-entrypoint-initdb.d
-#    ports:
-#      - "${MYSQL_PORT}:3306"
-#    networks:
-#      - backend
+  mysql:
+    build:
+      context: ./services/mysql
+      args:
+        - MYSQL_VERSION=${MYSQL_VERSION}
+        - BASE_IMAGE_REGISTRY=${BASE_IMAGE_REGISTRY}
+    environment:
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - TZ=${TIMEZONE}
+    volumes:
+      - ${DATA_PATH}/mysql:/var/lib/mysql
+      - ${MYSQL_ENTRYPOINT_INITDB}:/docker-entrypoint-initdb.d
+    ports:
+      - "${MYSQL_PORT}:3306"
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
 
 ### MongoDB ##############################################
 #  mongo:
@@ -451,12 +626,20 @@ services:
 
 ### Redis ################################################
   redis:
-    build: ./services/redis
+    build:
+      context: ./services/redis
+      args:
+        - BASE_IMAGE_REGISTRY=${BASE_IMAGE_REGISTRY}
     volumes:
       - ${DATA_PATH}/redis:/data
     command: --requirepass ${REDIS_PASSWORD}
     ports:
       - "${REDIS_PORT}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
     networks:
       - backend
 
@@ -475,21 +658,27 @@ services:
 #      - backend
 
 ### RabbitMQ #############################################
-#  rabbitmq:
-#    build: ./services/rabbitmq
-#    ports:
-#      - "${RABBITMQ_NODE_HOST_PORT}:5672"
-#      - "${RABBITMQ_MANAGEMENT_HTTP_HOST_PORT}:15672"
-#      - "${RABBITMQ_MANAGEMENT_HTTPS_HOST_PORT}:15671"
-#      - "${RABBITMQ_WEB_STOMP_HOST_PORT}:15674"
-#    privileged: true
-#    hostname: rabbitmq
-#    volumes:
-#      - ${DATA_PATH}/rabbitmq:/var/lib/rabbitmq
-#      - ./services/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf
-#      - ./services/rabbitmq/management_agent.disable_metrics_collector.conf:/etc/rabbitmq/conf.d/management_agent.disable_metrics_collector.conf
-#    networks:
-#      - backend
+  rabbitmq:
+    build:
+      context: ./services/rabbitmq
+      args:
+        - BASE_IMAGE_REGISTRY=${BASE_IMAGE_REGISTRY}
+    ports:
+      - "${RABBITMQ_NODE_HOST_PORT}:5672"
+      - "${RABBITMQ_MANAGEMENT_HTTP_HOST_PORT}:15672"
+    hostname: rabbitmq
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+    volumes:
+      - ${DATA_PATH}/rabbitmq:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+    networks:
+      - backend
 
 ### ElasticSearch ########################################
 #  elasticsearch:

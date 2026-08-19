@@ -125,6 +125,7 @@ Write-EnvDefault $envMap 'CONTAINER_PROJECT_PATH' $containerValue $overwrite
 Write-EnvDefault $envMap 'DATA_PATH' './data' $overwrite
 Write-EnvDefault $envMap 'TIMEZONE' 'Asia/Shanghai' $overwrite
 Write-EnvDefault $envMap 'CHANGE_SOURCE' 'true' $overwrite
+Write-EnvDefault $envMap 'BASE_IMAGE_REGISTRY' '' $overwrite
 Write-EnvDefault $envMap 'DOCKER_PANEL_PHP_IMAGE' 'php:8.3-cli-alpine' $overwrite
 Write-EnvDefault $envMap 'DOCKER_PANEL_COMPOSER_IMAGE' 'composer:2' $overwrite
 Write-EnvDefault $envMap 'PHP_VERSION' '8.3' $overwrite
@@ -133,6 +134,11 @@ Write-EnvDefault $envMap 'NGINX_PHP_UPSTREAM_CONTAINER' 'php83-fpm' $overwrite
 Write-EnvDefault $envMap 'NGINX_PHP_UPSTREAM_PORT' '9000' $overwrite
 Write-EnvDefault $envMap 'WORKSPACE_COMPOSER_REPO_PACKAGIST' 'https://mirrors.aliyun.com/composer/' $overwrite
 Write-EnvDefault $envMap 'GOPROXY' 'https://goproxy.cn,direct' $overwrite
+Write-EnvDefault $envMap 'JAVA_VERSION' '8' $overwrite
+Write-EnvDefault $envMap 'MAVEN_VERSION' '3.9.9' $overwrite
+Write-EnvDefault $envMap 'MAVEN_MIRROR' 'https://maven.aliyun.com/repository/public' $overwrite
+Write-EnvDefault $envMap 'JAVA_HOST_PORT' '8080' $overwrite
+Write-EnvDefault $envMap 'JAVA_DEBUG_PORT' '5005' $overwrite
 
 $latest = Read-EnvMap
 if ($latest['HOST_PROJECT_PATH'] -eq './data') { Ensure-LocalDirectory './data' }

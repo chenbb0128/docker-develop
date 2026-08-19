@@ -59,6 +59,12 @@ class EnvironmentController extends AbstractController
             'services' => ['go', 'redis'],
             'icon' => 'Go',
         ],
+        'java' => [
+            'name' => 'Java 8 Dev',
+            'description' => 'Java 8 + Maven + Redis',
+            'services' => ['java', 'redis'],
+            'icon' => 'Java',
+        ],
     ];
 
     /**
@@ -135,7 +141,7 @@ class EnvironmentController extends AbstractController
         $services = implode(' ', $config['services']);
 
         // 使用 docker-compose up -d 启动（会自动创建不存在的容器）
-        $result = $this->runDockerCompose("up -d {$services}");
+        $result = $this->runDockerCompose("up -d --build {$services}");
 
         if ($result['success']) {
             return $this->success([

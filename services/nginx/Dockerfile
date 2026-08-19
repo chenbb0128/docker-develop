@@ -1,4 +1,5 @@
-FROM nginx:alpine
+ARG BASE_IMAGE_REGISTRY=
+FROM ${BASE_IMAGE_REGISTRY}nginx:alpine
 
 COPY nginx.conf /etc/nginx/
 

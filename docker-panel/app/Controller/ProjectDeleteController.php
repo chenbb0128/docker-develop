@@ -65,11 +65,20 @@ class ProjectDeleteController extends AbstractController
             }
 
             if ($removeCompose) {
-                if (($project['type'] ?? '') !== 'hyperf') {
+                if (!in_array(($project['type'] ?? ''), ['hyperf', 'java', 'go'], true)) {
                     $warnings[] = 'Compose service cleanup is only available for dedicated project services.';
                 } else {
-                    $service = $dedicatedService ?? $this->hyperfService($project);
-                    if ($this->removeHyperfComposeService($service)) {
+                    $service = $dedicatedService ?? match ($project['type'] ?? '') {
+                        'java' => $this->javaService($project),
+                        'go' => $this->goService($project),
+                        default => $this->hyperfService($project),
+                    };
+                    $removed = match ($project['type'] ?? '') {
+                        'java' => $this->removeJavaComposeService($service),
+                        'go' => $this->removeGoComposeService($service),
+                        default => $this->removeHyperfComposeService($service),
+                    };
+                    if ($removed) {
                         $actions[] = 'Remove docker-compose service block: ' . $service;
                     } else {
                         $warnings[] = 'docker-compose service block was not found: ' . $service;
@@ -288,6 +297,12 @@ class ProjectDeleteController extends AbstractController
         if (($project['type'] ?? '') === 'hyperf') {
             return $this->hyperfService($project);
         }
+        if (($project['type'] ?? '') === 'java') {
+            return $this->javaService($project);
+        }
+        if (($project['type'] ?? '') === 'go') {
+            return $this->goService($project);
+        }
 
         return null;
     }
@@ -303,6 +318,61 @@ class ProjectDeleteController extends AbstractController
         return 'hyperf-' . $key;
     }
 
+    private function javaService(array $project): string
+    {
+        $service = preg_replace('/[^a-zA-Z0-9_-]+/', '', (string) ($project['service'] ?? '')) ?: '';
+        if ($service !== '') {
+            return $service;
+        }
+
+        $key = strtolower(preg_replace('/[^a-zA-Z0-9_-]+/', '-', (string) ($project['key'] ?? 'project')) ?: 'project');
+        return 'java-' . $key;
+    }
+
+    private function goService(array $project): string
+    {
+        $service = preg_replace('/[^a-zA-Z0-9_-]+/', '', (string) ($project['service'] ?? '')) ?: '';
+        if ($service !== '') {
+            return $service;
+        }
+
+        $key = strtolower(preg_replace('/[^a-zA-Z0-9_-]+/', '-', (string) ($project['key'] ?? 'project')) ?: 'project');
+        return 'go-' . $key;
+    }
+
+    private function removeGoComposeService(string $service): bool
+    {
+        $composeFile = $this->projectPath . '/docker-compose.yml';
+        $content = (string) file_get_contents($composeFile);
+        $begin = '# BEGIN Go project: ' . $service;
+        $end = '# END Go project: ' . $service;
+        $pattern = '/\R?' . preg_quote($begin, '/') . '.*?' . preg_quote($end, '/') . '\R?/s';
+        $newContent = preg_replace($pattern, PHP_EOL, $content, 1, $count);
+
+        if ($count !== 1 || $newContent === null) {
+            return false;
+        }
+
+        $this->writeTextFile($composeFile, rtrim($newContent) . PHP_EOL);
+        return true;
+    }
+
+    private function removeJavaComposeService(string $service): bool
+    {
+        $composeFile = $this->projectPath . '/docker-compose.yml';
+        $content = (string) file_get_contents($composeFile);
+        $begin = '# BEGIN Java project: ' . $service;
+        $end = '# END Java project: ' . $service;
+        $pattern = '/\R?' . preg_quote($begin, '/') . '.*?' . preg_quote($end, '/') . '\R?/s';
+        $newContent = preg_replace($pattern, PHP_EOL, $content, 1, $count);
+
+        if ($count !== 1 || $newContent === null) {
+            return false;
+        }
+
+        $this->writeTextFile($composeFile, rtrim($newContent) . PHP_EOL);
+        return true;
+    }
     private function removeHyperfComposeService(string $service): bool
     {
         $composeFile = $this->projectPath . '/docker-compose.yml';

@@ -3,7 +3,7 @@
 SHELL := /bin/sh
 COMPOSE := $(shell if command -v docker-compose >/dev/null 2>&1; then echo docker-compose; else echo docker compose; fi)
 
-.PHONY: help doctor start panel demo stop down ps logs restart build-panel build-nginx build-php83 php83 shell-panel shell-nginx shell-php83 go workspace composer-install
+.PHONY: help doctor start panel demo stop down ps logs restart build-panel build-nginx build-php83 php83 shell-panel shell-nginx shell-php83 go java workspace composer-install
 
 help:
 	@echo "Docker Develop commands"
@@ -70,3 +70,9 @@ workspace:
 
 composer-install:
 	$(COMPOSE) exec docker-panel composer install --no-interaction --prefer-dist
+
+java:
+	$(COMPOSE) up -d java redis docker-panel
+
+shell-java:
+	$(COMPOSE) exec java bash

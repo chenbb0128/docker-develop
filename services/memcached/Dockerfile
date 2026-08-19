@@ -1,4 +1,5 @@
-FROM memcached:latest
+ARG BASE_IMAGE_REGISTRY=
+FROM ${BASE_IMAGE_REGISTRY}memcached:latest
 
 CMD ["memcached"]
 

@@ -15,6 +15,8 @@ class ProjectController extends AbstractController
     private const HYPERF_DEV_COMMAND = 'if php bin/hyperf.php list 2>/dev/null | grep -q "server:watch"; then php bin/hyperf.php server:watch; else php bin/hyperf.php start; fi';
     private const HYPERF_STARTUP_PREPARE = 'git config --global --add safe.directory "$$PWD" 2>/dev/null || true; if [ -f composer.json ] && [ ! -f vendor/autoload.php ]; then composer install --no-interaction --prefer-dist; fi';
     private const HYPERF_ENTRY_CHECK = 'if [ ! -f bin/hyperf.php ]; then echo "Hyperf entry file missing."; echo "Check HOST_PROJECT_PATH in .env and the project path."; exit 66; fi';
+    private const JAVA_DEV_COMMAND = 'PORT=${SERVER_PORT:-8080}; if [ -f pom.xml ]; then mvn spring-boot:run -Dspring-boot.run.arguments=--server.port=$PORT; elif [ -f ./mvnw ]; then tr -d "\015" < ./mvnw > /tmp/project-mvnw && chmod +x /tmp/project-mvnw && sh /tmp/project-mvnw spring-boot:run -Dspring-boot.run.arguments=--server.port=$PORT; elif [ -f ./gradlew ]; then tr -d "\015" < ./gradlew > /tmp/project-gradlew && chmod +x /tmp/project-gradlew && sh /tmp/project-gradlew bootRun --args=--server.port=$PORT; else echo "No pom.xml, mvnw, or gradlew found"; exit 1; fi';
+    private const GO_DEV_COMMAND = 'export PATH=/go/bin:/usr/local/go/bin:$PATH; PORT=${PORT:-8080}; export PORT; SERVER_PORT=${SERVER_PORT:-$PORT}; export SERVER_PORT; if [ ! -f go.mod ]; then echo "go.mod not found"; exit 1; fi; go mod download; if [ -f main.go ]; then exec go run .; elif [ -d cmd/server ]; then exec go run ./cmd/server; elif [ -d cmd/api ]; then exec go run ./cmd/api; elif [ -d cmd/app ]; then exec go run ./cmd/app; else MAIN_PACKAGE=$(go list -f "{{if eq .Name \"main\"}}{{.ImportPath}}{{end}}" ./... 2>/dev/null | sed -n "/./{p;q;}"); if [ -z "$MAIN_PACKAGE" ]; then echo "No Go main package found"; exit 1; fi; exec go run "$MAIN_PACKAGE"; fi';
 
     #[Inject]
     protected DockerService $docker;
@@ -23,7 +25,7 @@ class ProjectController extends AbstractController
     private string $configFile = '/var/www/docker-develop/projects.json';
     private string $exampleFile = '/var/www/docker-develop/projects.example.json';
 
-    private array $allowedTypes = ['hyperf', 'laravel', 'php-fpm', 'static'];
+    private array $allowedTypes = ['hyperf', 'laravel', 'php-fpm', 'static', 'java', 'go'];
 
     private function checkAuth(): bool
     {
@@ -81,8 +83,29 @@ class ProjectController extends AbstractController
         if ($project['command'] === '' && $project['type'] === 'hyperf') {
             $project['command'] = self::HYPERF_DEV_COMMAND;
         }
+        if ($project['command'] === '' && $project['type'] === 'java') {
+            $project['command'] = self::JAVA_DEV_COMMAND;
+        }
+        if ($project['command'] === '' && $project['type'] === 'go') {
+            $project['command'] = self::GO_DEV_COMMAND;
+        }
         if ($project['log'] === '' && $project['type'] === 'hyperf') {
             $project['log'] = 'runtime/logs/hyperf.log';
+        }
+        if ($project['log'] === '' && $project['type'] === 'java') {
+            $project['log'] = 'logs/spring.log';
+        }
+        if ($project['type'] === 'java' && $project['service'] === '') {
+            $project['service'] = $this->javaServiceName($project['key']);
+        }
+        if ($project['type'] === 'java' && empty($project['services'])) {
+            $project['services'] = [$project['service'], 'redis', 'mysql', 'rabbitmq'];
+        }
+        if ($project['type'] === 'go' && $project['service'] === '') {
+            $project['service'] = $this->goServiceName($project['key']);
+        }
+        if ($project['type'] === 'go' && empty($project['services'])) {
+            $project['services'] = [$project['service']];
         }
         if ($project['type'] === 'hyperf' && $project['service'] === '') {
             $project['service'] = $this->hyperfServiceName($project['key']);
@@ -90,6 +113,17 @@ class ProjectController extends AbstractController
         if ($project['type'] === 'hyperf' && !in_array($project['service'], $project['services'], true)) {
             array_unshift($project['services'], $project['service']);
         }
+        if ($project['type'] === 'java' && !in_array($project['service'], $project['services'], true)) {
+            array_unshift($project['services'], $project['service']);
+        }
+        if ($project['type'] === 'go' && !in_array($project['service'], $project['services'], true)) {
+            array_unshift($project['services'], $project['service']);
+        }
+        $project['services'] = $this->normalizeProjectServicesForType(
+            $project['type'],
+            $project['services'],
+            $project['service']
+        );
         if ($project['url'] === '' && $project['port'] > 0) {
             $project['url'] = 'http://localhost:' . $project['port'];
         }
@@ -137,22 +171,42 @@ class ProjectController extends AbstractController
             $dryRun = (bool) $this->request->input('dryRun', false);
 
             if ($port === 0) {
-                $port = $type === 'hyperf' ? 9502 : 8002;
+                $port = match ($type) {
+                    'hyperf' => 9502,
+                    'java' => 8080,
+                    'go' => 8081,
+                    default => 8002,
+                };
             }
 
             $containerPath = $this->toContainerPath($pathInput);
-            $service = $type === 'hyperf' ? $this->hyperfServiceName($key) : '';
+            $service = match ($type) {
+                'hyperf' => $this->hyperfServiceName($key),
+                'java' => $this->javaServiceName($key),
+                'go' => $this->goServiceName($key),
+                default => '',
+            };
             $defaultServices = $this->defaultProjectServices($type, $php, $service);
             $services = $this->normalizeServices($servicesInput === '' ? $defaultServices : $servicesInput);
 
-            if ($type === 'hyperf' && !in_array($service, $services, true)) {
+            if (in_array($type, ['hyperf', 'java', 'go'], true) && $service !== '' && !in_array($service, $services, true)) {
                 array_unshift($services, $service);
             }
+            $services = $this->normalizeProjectServicesForType($type, $services, $service);
             if ($command === '' && $type === 'hyperf') {
                 $command = self::HYPERF_DEV_COMMAND;
             }
+            if ($command === '' && $type === 'java') {
+                $command = self::JAVA_DEV_COMMAND;
+            }
+            if ($command === '' && $type === 'go') {
+                $command = self::GO_DEV_COMMAND;
+            }
             if ($log === '' && $type === 'hyperf') {
                 $log = 'runtime/logs/hyperf.log';
+            }
+            if ($log === '' && $type === 'java') {
+                $log = 'logs/spring.log';
             }
             if ($url === '' && $port > 0) {
                 $url = 'http://localhost:' . $port;
@@ -182,7 +236,7 @@ class ProjectController extends AbstractController
 
             $actions = ['Write or update projects.json'];
             $site = null;
-            if ($type !== 'hyperf' && !$noSite) {
+            if (!in_array($type, ['hyperf', 'java', 'go'], true) && !$noSite) {
                 $siteRoot = $rootInput !== '' ? $this->toContainerPath($rootInput) : ($type === 'static' ? $containerPath : $this->joinContainerPath($containerPath, 'public'));
                 $siteFile = $this->projectPath . '/services/nginx/sites/' . $key . '.conf';
                 if (!$dryRun && file_exists($siteFile) && !$force) {
@@ -209,10 +263,29 @@ class ProjectController extends AbstractController
                 ];
                 $actions[] = 'Write Hyperf service ' . $service . ' with port ' . $port . ':9501';
             }
+            if ($type === 'java') {
+                $compose = [
+                    'service' => $service,
+                    'hostPort' => $port,
+                    'containerPort' => $port,
+                ];
+                $actions[] = 'Write Java service ' . $service . ' with port ' . $port . ':' . $port;
+            }
+            if ($type === 'go') {
+                $compose = [
+                    'service' => $service,
+                    'hostPort' => $port,
+                    'containerPort' => 8080,
+                ];
+                $actions[] = 'Write Go service ' . $service . ' with port ' . $port . ':8080';
+            }
 
-            $nextSteps = $type === 'hyperf'
-                ? ['在项目卡片点击 Start；面板会自动 build，缺 vendor 时会自动 composer install。', '打开 ' . $url]
-                : ['docker-compose up -d ' . implode(' ', $services) . ' docker-panel', '新增端口后重启 Nginx，普通配置变更可重载 Nginx。', '打开 ' . $url];
+            $nextSteps = match ($type) {
+                'hyperf' => ['在项目卡片点击 Start；面板会自动 build，缺 vendor 时会自动 composer install。', '打开 ' . $url],
+                'java' => ['在项目卡片点击 Start；面板会启动 Java 专属容器，并一起拉起 Redis / MySQL / RabbitMQ。', '打开 ' . $url],
+                'go' => ['Click Start on the project card; the panel builds the Go container, downloads modules, and starts selected dependencies.', 'Open ' . $url],
+                default => ['docker-compose up -d ' . implode(' ', $services) . ' docker-panel', '新增端口后重启 Nginx，普通配置变更可重载 Nginx。', '打开 ' . $url],
+            };
 
             if ($dryRun) {
                 return $this->success([
@@ -234,8 +307,14 @@ class ProjectController extends AbstractController
                 $this->ensureNginxPort($port);
             }
 
-            if ($compose !== null) {
+            if ($compose !== null && $type === 'hyperf') {
                 $this->ensureHyperfComposeService($service, $containerPath, $port, $compose['phpVersion'], $command);
+            }
+            if ($compose !== null && $type === 'java') {
+                $this->ensureJavaComposeService($service, $containerPath, $port, $command, $services);
+            }
+            if ($compose !== null && $type === 'go') {
+                $this->ensureGoComposeService($service, $containerPath, $port, $command, $services);
             }
 
             $this->saveProjects($this->upsertProject($this->loadProjects(), $project));
@@ -264,6 +343,7 @@ class ProjectController extends AbstractController
         }
 
         try {
+            $this->ensureWebProjectRuntime($project);
             $services = $this->projectServices($project);
             $output = [];
             if (!empty($services)) {
@@ -292,11 +372,15 @@ class ProjectController extends AbstractController
         }
 
         try {
-            if (($project['type'] ?? '') !== 'hyperf') {
+            if (!in_array(($project['type'] ?? ''), ['hyperf', 'java', 'go'], true)) {
                 return $this->success([], 'No project process to stop');
             }
 
-            $service = $this->hyperfService($project);
+            $service = match ($project['type'] ?? '') {
+                'java' => $this->javaService($project),
+                'go' => $this->goService($project),
+                default => $this->hyperfService($project),
+            };
             return $this->success([
                 'output' => $this->runHostCommand('docker-compose stop ' . escapeshellarg($service)),
             ], 'Project stopped');
@@ -318,10 +402,17 @@ class ProjectController extends AbstractController
         }
 
         try {
+            $this->ensureWebProjectRuntime($project);
             $services = $this->projectServices($project);
             $output = [];
             if (($project['type'] ?? '') === 'hyperf') {
                 $output[] = $this->runHostCommand('docker-compose stop ' . escapeshellarg($this->hyperfService($project)));
+            }
+            if (($project['type'] ?? '') === 'java') {
+                $output[] = $this->runHostCommand('docker-compose stop ' . escapeshellarg($this->javaService($project)));
+            }
+            if (($project['type'] ?? '') === 'go') {
+                $output[] = $this->runHostCommand('docker-compose stop ' . escapeshellarg($this->goService($project)));
             }
             if (!empty($services)) {
                 $output[] = $this->startProjectServices($services);
@@ -400,13 +491,18 @@ class ProjectController extends AbstractController
             return $this->error('Project not found', 404);
         }
 
-        if (($project['type'] ?? '') !== 'hyperf') {
+        if (!in_array(($project['type'] ?? ''), ['hyperf', 'java', 'go'], true)) {
             return $this->json(['logs' => 'This project type does not have a managed process log.']);
         }
 
         try {
+            $service = match ($project['type'] ?? '') {
+                'java' => $this->javaService($project),
+                'go' => $this->goService($project),
+                default => $this->hyperfService($project),
+            };
             return $this->json([
-                'logs' => $this->runHostCommand('docker-compose logs --tail=200 ' . escapeshellarg($this->hyperfService($project))),
+                'logs' => $this->runHostCommand('docker-compose logs --tail=200 ' . escapeshellarg($service)),
             ]);
         } catch (\Throwable $e) {
             return $this->error($this->friendlyCommandError($e), 500);
@@ -576,6 +672,14 @@ class ProjectController extends AbstractController
         if ($type === 'hyperf') {
             return [$hyperfService, 'redis'];
         }
+        if ($type === 'java') {
+            $javaService = $hyperfService !== '' ? $hyperfService : $this->javaServiceName('project');
+            return [$javaService, 'redis', 'mysql', 'rabbitmq'];
+        }
+        if ($type === 'go') {
+            $goService = $hyperfService !== '' ? $hyperfService : $this->goServiceName('project');
+            return [$goService];
+        }
         if ($type === 'static') {
             return ['nginx'];
         }
@@ -677,8 +781,15 @@ class ProjectController extends AbstractController
             return false;
         }
 
-        $pattern = '/(  nginx:\R(?:(?!^  [a-zA-Z0-9_-]+:).)*?    ports:\R(?:(?:      - .*\R)+))/ms';
-        $newContent = preg_replace($pattern, '$1      - "' . $port . ':' . $port . '"' . PHP_EOL, $content, 1, $count);
+        $pattern = '/(  nginx:\R(?:(?!^  [a-zA-Z0-9_-]+:).)*?    ports:\R)((?:      - .*\R)+)/ms';
+        $newContent = preg_replace_callback($pattern, function (array $matches) use ($port): string {
+            $ports = $matches[2];
+            if (str_contains($ports, '"' . $port . ':' . $port . '"')) {
+                return $matches[0];
+            }
+
+            return $matches[1] . rtrim($ports, "\r\n") . PHP_EOL . '      - "' . $port . ':' . $port . '"' . PHP_EOL;
+        }, $content, 1, $count);
         if ($count !== 1 || $newContent === null) {
             throw new \RuntimeException('Unable to find nginx ports block in docker-compose.yml.');
         }
@@ -687,6 +798,37 @@ class ProjectController extends AbstractController
         return true;
     }
 
+    private function ensureWebProjectRuntime(array $project): void
+    {
+        if (!$this->isNginxProject($project)) {
+            return;
+        }
+
+        $key = preg_replace('/[^a-zA-Z0-9_.-]/', '', (string) ($project['key'] ?? '')) ?: 'project';
+        $type = (string) ($project['type'] ?? 'laravel');
+        $path = $this->containerPath($project);
+        $port = (int) ($project['port'] ?? 0);
+        if ($port <= 0) {
+            $port = 8002;
+        }
+
+        $sitesPath = $this->projectPath . '/services/nginx/sites';
+        if (!is_dir($sitesPath) && !mkdir($sitesPath, 0775, true) && !is_dir($sitesPath)) {
+            throw new \RuntimeException('Unable to create nginx sites directory.');
+        }
+
+        $siteFile = $sitesPath . '/' . $key . '.conf';
+        $root = $type === 'static' ? $path : $this->joinContainerPath($path, 'public');
+        $siteConfig = $this->generateSiteConfig($type, 'localhost', $root, $this->projectPhpService($project), $port);
+        if (!is_file($siteFile)) {
+            $this->writeTextFile($siteFile, $siteConfig);
+        } elseif ((string) file_get_contents($siteFile) !== $siteConfig) {
+            copy($siteFile, $siteFile . '.bak.' . date('YmdHis'));
+            $this->writeTextFile($siteFile, $siteConfig);
+        }
+
+        $this->ensureNginxPort($port);
+    }
     private function ensureHyperfComposeService(string $service, string $path, int $hostPort, string $phpVersion, string $command): void
     {
         $composeFile = $this->projectPath . '/docker-compose.yml';
@@ -751,6 +893,223 @@ class ProjectController extends AbstractController
             '      - frontend',
             '      - backend',
         ];
+
+        return implode(PHP_EOL, $lines) . PHP_EOL;
+    }
+
+
+    private function ensureJavaComposeService(string $service, string $path, int $hostPort, string $command, array $services): void
+    {
+        $composeFile = $this->projectPath . '/docker-compose.yml';
+        $content = (string) file_get_contents($composeFile);
+        $begin = '# BEGIN Java project: ' . $service;
+        $end = '# END Java project: ' . $service;
+        $block = $begin . PHP_EOL . $this->newJavaServiceConfig($service, $path, $hostPort, $command, $services) . $end;
+        $pattern = '/\R?' . preg_quote($begin, '/') . '.*?' . preg_quote($end, '/') . '/s';
+
+        if (preg_match($pattern, $content)) {
+            $content = preg_replace($pattern, PHP_EOL . $block, $content, 1) ?? $content;
+        } else {
+            $markerPattern = '/#-+\R# Docker [^\r\n]*(?:\R#-+[^\r\n]*)?/';
+            if (preg_match($markerPattern, $content)) {
+                $content = preg_replace($markerPattern, $block . PHP_EOL . PHP_EOL . '$0', $content, 1) ?? $content;
+            } else {
+                $javaMarker = '/\R#-+?\R# Java Development Environment\R#-+?\R/';
+                if (!preg_match($javaMarker, $content)) {
+                    throw new \RuntimeException('Unable to find docker-panel marker in docker-compose.yml.');
+                }
+                $content = preg_replace($javaMarker, PHP_EOL . $block . PHP_EOL . PHP_EOL . '$0', $content, 1) ?? $content;
+            }
+        }
+
+        $this->writeTextFile($composeFile, rtrim($content) . PHP_EOL);
+    }
+
+    private function newJavaServiceConfig(string $service, string $path, int $hostPort, string $command, array $services): string
+    {
+        $services = $this->normalizeServices($services);
+        $optionalDeps = array_values(array_intersect(['redis', 'mysql', 'rabbitmq'], $services));
+
+        // Bake the host/app port into the command so docker-compose does not interpolate $VAR.
+        $startup = 'export SERVER_PORT=' . $hostPort
+            . '; export PORT=' . $hostPort
+            . '; if [ -f pom.xml ]; then mvn spring-boot:run -Dspring-boot.run.arguments=--server.port=' . $hostPort
+            . '; elif [ -f ./mvnw ]; then tr -d "\015" < ./mvnw > /tmp/project-mvnw && chmod +x /tmp/project-mvnw && sh /tmp/project-mvnw spring-boot:run -Dspring-boot.run.arguments=--server.port=' . $hostPort
+            . '; elif [ -f ./gradlew ]; then tr -d "\015" < ./gradlew > /tmp/project-gradlew && chmod +x /tmp/project-gradlew && sh /tmp/project-gradlew bootRun --args=--server.port=' . $hostPort
+            . '; else echo "No pom.xml, mvnw, or gradlew found"; exit 1; fi';
+        // Keep a custom command if the user provided one; escape $ for compose interpolation.
+        if ($command !== '' && $command !== self::JAVA_DEV_COMMAND) {
+            $startup = 'export SERVER_PORT=' . $hostPort . '; export PORT=' . $hostPort . '; ' . str_replace('$', '$$', $command);
+        }
+
+        $envLines = [
+            '      - TZ=${TIMEZONE}',
+            '      - SERVER_PORT=' . $hostPort,
+            '      - PORT=' . $hostPort,
+            '      - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS}',
+            '      - MAVEN_OPTS=${MAVEN_OPTS}',
+        ];
+        if (in_array('redis', $optionalDeps, true)) {
+            $envLines[] = '      - REDIS_HOST=redis';
+            $envLines[] = '      - REDIS_PORT=6379';
+            $envLines[] = '      - REDIS_PASSWORD=${REDIS_PASSWORD}';
+        }
+        if (in_array('mysql', $optionalDeps, true)) {
+            $envLines[] = '      - DB_HOST=mysql';
+            $envLines[] = '      - DB_PORT=3306';
+            $envLines[] = '      - DB_NAME=${MYSQL_DATABASE}';
+            $envLines[] = '      - DB_USERNAME=root';
+            $envLines[] = '      - DB_PASSWORD=${MYSQL_ROOT_PASSWORD}';
+        }
+        if (in_array('rabbitmq', $optionalDeps, true)) {
+            $envLines[] = '      - RABBITMQ_HOST=rabbitmq';
+            $envLines[] = '      - RABBITMQ_PORT=5672';
+            $envLines[] = '      - RABBITMQ_USERNAME=guest';
+            $envLines[] = '      - RABBITMQ_PASSWORD=guest';
+        }
+
+        $lines = [
+            '',
+            '  ' . $service . ':',
+            '    build:',
+            '      context: ./services/java',
+            '      args:',
+            '        - JAVA_VERSION=${JAVA_VERSION}',
+            '        - MAVEN_VERSION=${MAVEN_VERSION}',
+            '        - MAVEN_MIRROR=${MAVEN_MIRROR}',
+            '        - PUID=${JAVA_PUID}',
+            '        - PGID=${JAVA_PGID}',
+            '        - CONTAINER_PROJECT_PATH=${CONTAINER_PROJECT_PATH}',
+            '    working_dir: ' . $this->yamlSingleQuote($path),
+            '    command: sh -lc ' . $this->yamlSingleQuote($startup),
+            '    volumes:',
+            '      - ${HOST_PROJECT_PATH}:${CONTAINER_PROJECT_PATH}',
+            '      - maven-cache:/home/developer/.m2',
+            '      - gradle-cache:/home/developer/.gradle',
+            '    environment:',
+        ];
+        $lines = array_merge($lines, $envLines, [
+            '    ports:',
+            '      - "' . $hostPort . ':' . $hostPort . '"',
+            '    extra_hosts:',
+            '      - "dockerhost:${DOCKER_HOST_IP}"',
+            '      - "host.docker.internal:host-gateway"',
+        ]);
+        if ($optionalDeps !== []) {
+            $lines[] = '    depends_on:';
+            foreach ($optionalDeps as $dep) {
+                $lines[] = '      ' . $dep . ':';
+                $lines[] = '        condition: service_healthy';
+            }
+        }        $lines = array_merge($lines, [
+            '    tty: true',
+            '    networks:',
+            '      - frontend',
+            '      - backend',
+        ]);
+
+        return implode(PHP_EOL, $lines) . PHP_EOL;
+    }
+
+    private function ensureGoComposeService(string $service, string $path, int $hostPort, string $command, array $services): void
+    {
+        $composeFile = $this->projectPath . '/docker-compose.yml';
+        $content = (string) file_get_contents($composeFile);
+        $begin = '# BEGIN Go project: ' . $service;
+        $end = '# END Go project: ' . $service;
+        $block = $begin . PHP_EOL . $this->newGoServiceConfig($service, $path, $hostPort, $command, $services) . $end;
+        $pattern = '/\R?' . preg_quote($begin, '/') . '.*?' . preg_quote($end, '/') . '/s';
+
+        if (preg_match($pattern, $content)) {
+            $content = preg_replace($pattern, PHP_EOL . $block, $content, 1) ?? $content;
+        } else {
+            $goMarker = '/\R#-+?\R# Go Development Environment\R#-+?\R/';
+            if (!preg_match($goMarker, $content)) {
+                throw new \RuntimeException('Unable to find Go marker in docker-compose.yml.');
+            }
+            $content = preg_replace($goMarker, PHP_EOL . $block . PHP_EOL . PHP_EOL . '$0', $content, 1) ?? $content;
+        }
+
+        $this->writeTextFile($composeFile, rtrim($content) . PHP_EOL);
+    }
+
+    private function newGoServiceConfig(string $service, string $path, int $hostPort, string $command, array $services): string
+    {
+        $services = $this->normalizeServices($services);
+        $optionalDeps = array_values(array_intersect(['redis', 'mysql', 'rabbitmq'], $services));
+        $startup = $command !== '' ? $command : self::GO_DEV_COMMAND;
+        $startup = str_replace('$', '$$', $startup);
+
+        $envLines = [
+            '      - TZ=${TIMEZONE}',
+            '      - GO111MODULE=on',
+            '      - GOPROXY=${GOPROXY}',
+            '      - CGO_ENABLED=${GO_CGO_ENABLED}',
+            '      - PORT=8080',
+            '      - SERVER_PORT=8080',
+            '      - APP_PORT=8080',
+        ];
+        if (in_array('redis', $optionalDeps, true)) {
+            $envLines[] = '      - REDIS_HOST=redis';
+            $envLines[] = '      - REDIS_PORT=6379';
+            $envLines[] = '      - REDIS_PASSWORD=${REDIS_PASSWORD}';
+        }
+        if (in_array('mysql', $optionalDeps, true)) {
+            $envLines[] = '      - DB_HOST=mysql';
+            $envLines[] = '      - DB_PORT=3306';
+            $envLines[] = '      - DB_NAME=${MYSQL_DATABASE}';
+            $envLines[] = '      - DB_USERNAME=root';
+            $envLines[] = '      - DB_PASSWORD=${MYSQL_ROOT_PASSWORD}';
+        }
+        if (in_array('rabbitmq', $optionalDeps, true)) {
+            $envLines[] = '      - RABBITMQ_HOST=rabbitmq';
+            $envLines[] = '      - RABBITMQ_PORT=5672';
+            $envLines[] = '      - RABBITMQ_USERNAME=guest';
+            $envLines[] = '      - RABBITMQ_PASSWORD=guest';
+        }
+
+        $lines = [
+            '',
+            '  ' . $service . ':',
+            '    build:',
+            '      context: ./services/go',
+            '      args:',
+            '        - GO_VERSION=${GO_VERSION}',
+            '        - GOPROXY=${GOPROXY}',
+            '        - PUID=${GO_PUID}',
+            '        - PGID=${GO_PGID}',
+            '        - CONTAINER_PROJECT_PATH=${CONTAINER_PROJECT_PATH}',
+            '        - INSTALL_DELVE=${GO_INSTALL_DELVE}',
+            '        - CHANGE_SOURCE=${CHANGE_SOURCE}',
+            '        - BASE_IMAGE_REGISTRY=${BASE_IMAGE_REGISTRY}',
+            '    working_dir: ' . $this->yamlSingleQuote($path),
+            '    command: sh -c ' . $this->yamlSingleQuote($startup),
+            '    volumes:',
+            '      - ${HOST_PROJECT_PATH}:${CONTAINER_PROJECT_PATH}',
+            '      - go-mod-cache:/go/pkg/mod',
+            '      - go-build-cache:/home/developer/.cache/go-build',
+            '    environment:',
+        ];
+        $lines = array_merge($lines, $envLines, [
+            '    ports:',
+            '      - "' . $hostPort . ':8080"',
+            '    extra_hosts:',
+            '      - "dockerhost:${DOCKER_HOST_IP}"',
+            '      - "host.docker.internal:host-gateway"',
+        ]);
+        if ($optionalDeps !== []) {
+            $lines[] = '    depends_on:';
+            foreach ($optionalDeps as $dep) {
+                $lines[] = '      ' . $dep . ':';
+                $lines[] = '        condition: service_healthy';
+            }
+        }
+        $lines = array_merge($lines, [
+            '    tty: true',
+            '    networks:',
+            '      - frontend',
+            '      - backend',
+        ]);
 
         return implode(PHP_EOL, $lines) . PHP_EOL;
     }
@@ -997,13 +1356,7 @@ class ProjectController extends AbstractController
         $serviceStatuses = [];
 
         foreach ($services as $service) {
-            $matched = null;
-            foreach ($containers as $container) {
-                if ($this->containerMatchesService((string) ($container['name'] ?? ''), $service)) {
-                    $matched = $container;
-                    break;
-                }
-            }
+            $matched = $this->findContainerForService($containers, $service);
 
             $isRunning = ($matched['state'] ?? '') === 'running';
             if ($isRunning) {
@@ -1030,6 +1383,48 @@ class ProjectController extends AbstractController
         return $project;
     }
 
+    private function findContainerForService(array $containers, string $service): ?array
+    {
+        if ($service === '') {
+            return null;
+        }
+
+        $composeProject = basename($this->projectPath) ?: 'docker-develop';
+        $fallback = null;
+        $fallbackScore = -1;
+
+        foreach ($containers as $container) {
+            $name = (string) ($container['name'] ?? '');
+            $labels = is_array($container['labels'] ?? null) ? $container['labels'] : [];
+            $labelService = (string) ($labels['com.docker.compose.service'] ?? '');
+            $labelProject = (string) ($labels['com.docker.compose.project'] ?? '');
+            $score = -1;
+
+            if ($labelService === $service && $labelProject === $composeProject) {
+                return $container;
+            }
+            if ($labelService === $service) {
+                $score = 80;
+            } elseif ($name === $composeProject . '-' . $service . '-1' || $name === $composeProject . '_' . $service . '_1') {
+                $score = 70;
+            } elseif ($name === $service) {
+                $score = 60;
+            } elseif ($this->containerMatchesService($name, $service)) {
+                $score = 10;
+            }
+
+            if ($score >= 0 && ($container['state'] ?? '') === 'running') {
+                $score += 2;
+            }
+            if ($score > $fallbackScore) {
+                $fallback = $container;
+                $fallbackScore = $score;
+            }
+        }
+
+        return $fallback;
+    }
+
     private function containerMatchesService(string $containerName, string $service): bool
     {
         if ($containerName === '' || $service === '') {
@@ -1048,12 +1443,38 @@ class ProjectController extends AbstractController
         $services = $this->normalizeServices($project['services'] ?? []);
         if (($project['type'] ?? '') === 'hyperf') {
             $service = $this->hyperfService($project);
-            if (!in_array($service, $services, true)) {
-                array_unshift($services, $service);
+            $services = $this->normalizeProjectServicesForType('hyperf', $services, $service);
+        }
+        if (($project['type'] ?? '') === 'java') {
+            $service = $this->javaService($project);
+            $services = $this->normalizeProjectServicesForType('java', $services, $service);
+        }
+        if (($project['type'] ?? '') === 'go') {
+            $service = $this->goService($project);
+            $services = $this->normalizeProjectServicesForType('go', $services, $service);
+        }
+        if ($this->isNginxProject($project)) {
+            $php = $this->projectPhpService($project);
+            if (!in_array('nginx', $services, true)) {
+                array_unshift($services, 'nginx');
+            }
+            if (($project['type'] ?? '') !== 'static' && !in_array($php, $services, true)) {
+                $services[] = $php;
             }
         }
 
         return array_values(array_unique($services));
+    }
+
+    private function isNginxProject(array $project): bool
+    {
+        return in_array((string) ($project['type'] ?? ''), ['laravel', 'php-fpm', 'static'], true);
+    }
+
+    private function projectPhpService(array $project): string
+    {
+        $php = preg_replace('/[^a-zA-Z0-9_-]/', '', (string) ($project['php'] ?? '')) ?: '';
+        return $php !== '' ? $php : 'php83-fpm';
     }
 
     private function hyperfService(array $project): string
@@ -1068,14 +1489,52 @@ class ProjectController extends AbstractController
 
     private function hyperfServiceName(string $key): string
     {
-        $name = strtolower(preg_replace('/[^a-zA-Z0-9_-]/', '-', $key) ?: 'project');
+        $name = strtolower(preg_replace('/[^a-zA-Z0-9_-]+/', '-', $key) ?: 'project');
         return 'hyperf-' . $name;
+    }
+
+    private function javaService(array $project): string
+    {
+        $service = preg_replace('/[^a-zA-Z0-9_-]/', '', (string) ($project['service'] ?? '')) ?: '';
+        if ($service !== '') {
+            return $service;
+        }
+
+        return $this->javaServiceName((string) ($project['key'] ?? 'project'));
+    }
+
+    private function javaServiceName(string $key): string
+    {
+        $name = strtolower(preg_replace('/[^a-zA-Z0-9_-]+/', '-', $key) ?: 'project');
+        return 'java-' . $name;
+    }
+
+    private function goService(array $project): string
+    {
+        $service = preg_replace('/[^a-zA-Z0-9_-]/', '', (string) ($project['service'] ?? '')) ?: '';
+        if ($service !== '') {
+            return $service;
+        }
+
+        return $this->goServiceName((string) ($project['key'] ?? 'project'));
+    }
+
+    private function goServiceName(string $key): string
+    {
+        $name = strtolower(preg_replace('/[^a-zA-Z0-9_-]+/', '-', $key) ?: 'project');
+        return 'go-' . $name;
     }
 
     private function commandService(array $project): string
     {
         if (($project['type'] ?? '') === 'hyperf') {
             return $this->hyperfService($project);
+        }
+        if (($project['type'] ?? '') === 'java') {
+            return $this->javaService($project);
+        }
+        if (($project['type'] ?? '') === 'go') {
+            return $this->goService($project);
         }
 
         $phpService = preg_replace('/[^a-zA-Z0-9_-]/', '', (string) ($project['php'] ?? '')) ?: '';
@@ -1118,6 +1577,34 @@ class ProjectController extends AbstractController
         ))));
     }
 
+    private function normalizeProjectServicesForType(string $type, mixed $services, string $dedicatedService = ''): array
+    {
+        $services = $this->normalizeServices($services);
+        if (!in_array($type, ['hyperf', 'java', 'go'], true)) {
+            return $services;
+        }
+
+        $prefix = match ($type) { 'hyperf' => 'hyperf-', 'java' => 'java-', default => 'go-' };
+        $services = array_values(array_filter($services, static function (string $service) use ($prefix, $dedicatedService, $type): bool {
+            if ($type === 'java' && $service === 'java') {
+                return false;
+            }
+            if ($type === 'go' && $service === 'go') {
+                return false;
+            }
+            if ($dedicatedService !== '' && $service === $dedicatedService) {
+                return true;
+            }
+            return !str_starts_with($service, $prefix);
+        }));
+
+        if ($dedicatedService !== '' && !in_array($dedicatedService, $services, true)) {
+            array_unshift($services, $dedicatedService);
+        }
+
+        return array_values(array_unique($services));
+    }
+
     private function resolveProjectCommand(array $project, string $commandKey, string $customCommand): ?string
     {
         $type = (string) ($project['type'] ?? '');
@@ -1145,6 +1632,20 @@ class ProjectController extends AbstractController
             'static' => [
                 'npm-install' => 'npm install',
                 'npm-build' => 'npm run build',
+            ],
+            'java' => [
+                'java-version' => 'java -version',
+                'maven-version' => 'mvn -v',
+                'spring-boot-run' => self::JAVA_DEV_COMMAND,
+                'package' => 'if [ -f ./mvnw ]; then sed -i "s/\r$//" ./mvnw 2>/dev/null || true; chmod +x ./mvnw 2>/dev/null || true; sh ./mvnw -DskipTests package; elif [ -f pom.xml ]; then mvn -DskipTests package; else echo "No Maven project found"; exit 1; fi',
+                'test' => 'if [ -f ./mvnw ]; then sed -i "s/\r$//" ./mvnw 2>/dev/null || true; chmod +x ./mvnw 2>/dev/null || true; sh ./mvnw test; elif [ -f pom.xml ]; then mvn test; else echo "No Maven project found"; exit 1; fi',
+            ],
+            'go' => [
+                'go-version' => 'go version',
+                'go-env' => 'go env GOPROXY GOOS GOARCH',
+                'go-mod-download' => 'go mod download',
+                'build' => 'go build ./...',
+                'test' => 'go test ./...',
             ],
         ];
 
@@ -1211,6 +1712,7 @@ class ProjectController extends AbstractController
             return $this->error('Project not found', 404);
         }
 
+        $this->ensureWebProjectRuntime($project);
         $services = $this->projectServices($project);
         if ($services === []) {
             return $this->error('Project does not have services to start.', 400);
@@ -1336,14 +1838,19 @@ class ProjectController extends AbstractController
         string $finishedFile
     ): string {
         $serviceText = implode(' ', array_map('escapeshellarg', $services));
-        $prefix = 'cd ' . escapeshellarg($this->projectPath) . ' && unset PHP_VERSION && ' . $this->composeHostEnvPrefix();
+        $prefix = 'cd ' . escapeshellarg($this->projectPath) . ' && unset PHP_VERSION && DOCKER_BUILDKIT=0 COMPOSE_DOCKER_CLI_BUILD=0 ' . $this->composeHostEnvPrefix();
         $upNoBuildCommand = $prefix . 'docker-compose up -d --no-build ' . $serviceText;
-        $buildPlainCommand = $prefix . 'docker-compose build --progress=plain ' . $serviceText;
+        $buildPlainCommand = $prefix . 'docker-compose build ' . $serviceText;
         $upCommand = $prefix . 'docker-compose up -d ' . $serviceText;
         $psCommand = $prefix . 'docker-compose ps ' . $serviceText;
         $runningServicesCommand = $prefix . 'docker-compose ps --services --status running ' . $serviceText;
         $logsCommand = $prefix . 'docker-compose logs --tail=80 ' . $serviceText;
-        $stopCommand = $prefix . 'docker-compose stop ' . escapeshellarg($this->hyperfService($project));
+        $stopTarget = match ($project['type'] ?? '') {
+            'java' => $this->javaService($project),
+            'go' => $this->goService($project),
+            default => $this->hyperfService($project),
+        };
+        $stopCommand = $prefix . 'docker-compose stop ' . escapeshellarg($stopTarget);
         $projectName = (string) ($project['name'] ?? $project['key'] ?? $taskId);
         $actionName = $action === 'restart' ? '重启' : '启动';
 
@@ -1363,6 +1870,13 @@ class ProjectController extends AbstractController
             '  code=$?',
             '  if [ "$code" -ne 0 ]; then log "命令失败，退出码：$code"; fi',
             '  return "$code"',
+            '}',
+            'image_source_advice() {',
+            '  if grep -qiE "manifest unknown|unknown blob|tls: first record|context deadline exceeded|Client.Timeout|registry-1.docker.io|pull access denied" "$LOG_FILE"; then',
+            '    log "Image source hint: Aliyun mirror accelerator belongs in Docker Desktop Docker Engine registry-mirrors."',
+            '    log "Keep BASE_IMAGE_REGISTRY/PHP_BASE_IMAGE_REGISTRY empty unless the value is a real image namespace containing the required tags."',
+            '    log "Do not put https://*.mirror.aliyuncs.com into .env as a Dockerfile FROM prefix."',
+            '  fi',
             '}',
             'verify_services() {',
             '  check_command="$1"',
@@ -1401,7 +1915,7 @@ class ProjectController extends AbstractController
             'log ' . escapeshellarg('服务列表：' . implode(', ', $services)),
         ];
 
-        if ($action === 'restart' && ($project['type'] ?? '') === 'hyperf') {
+        if ($action === 'restart' && in_array(($project['type'] ?? ''), ['hyperf', 'java', 'go'], true)) {
             $lines[] = 'log "阶段 1/5：停止旧的项目容器"';
             $lines[] = 'run_step ' . escapeshellarg($stopCommand) . ' || true';
             $directStage = '阶段 2/5：尝试直接启动已有镜像';
@@ -1415,7 +1929,7 @@ class ProjectController extends AbstractController
             $logsStage = '阶段 4/4：检查运行状态并读取最近日志';
         }
 
-        $appendSuccessCheck = function () use (&$lines, $psCommand, $runningServicesCommand, $logsCommand, $serviceText, $logsStage): void {
+        $appendSuccessCheck = function (bool $finishOnFailure = true) use (&$lines, $psCommand, $runningServicesCommand, $logsCommand, $serviceText, $logsStage): void {
             $lines[] = 'log "项目服务已启动，等待容器稳定..."';
             $lines[] = 'sleep 3';
             $lines[] = 'run_step ' . escapeshellarg($psCommand) . ' || true';
@@ -1423,24 +1937,31 @@ class ProjectController extends AbstractController
             $lines[] = 'if ! verify_services ' . escapeshellarg($runningServicesCommand) . ' ' . $serviceText . '; then';
             $lines[] = '  log "服务没有全部保持运行，开始读取最近容器日志。"';
             $lines[] = '  run_step ' . escapeshellarg($logsCommand) . ' || true';
-            $lines[] = '  finish 1';
+            if ($finishOnFailure) {
+                $lines[] = '  finish 1';
+            } else {
+                $lines[] = '  log "直接启动没有跑稳，将继续重新构建项目镜像。"';
+            }
+            $lines[] = 'else';
+            $lines[] = '  run_step ' . escapeshellarg($logsCommand) . ' || true';
+            $lines[] = '  finish 0';
             $lines[] = 'fi';
-            $lines[] = 'run_step ' . escapeshellarg($logsCommand) . ' || true';
-            $lines[] = 'finish 0';
         };
 
         $lines[] = 'log ' . escapeshellarg($directStage);
         $lines[] = 'if run_step ' . escapeshellarg($upNoBuildCommand) . '; then';
-        $appendSuccessCheck();
+        $appendSuccessCheck(false);
         $lines[] = 'fi';
         $lines[] = 'log "直接启动没有成功，通常是镜像尚未构建、基础镜像需要拉取，或 compose 配置需要重新生成。"';
         $lines[] = 'log ' . escapeshellarg($buildStage);
         $lines[] = 'if ! run_step ' . escapeshellarg($buildPlainCommand) . '; then';
+        $lines[] = '  image_source_advice';
         $lines[] = '  finish 1';
         $lines[] = 'fi';
         $lines[] = 'log ' . escapeshellarg($upStage);
         $lines[] = 'if ! run_step ' . escapeshellarg($upCommand) . '; then';
         $lines[] = '  run_step ' . escapeshellarg($logsCommand) . ' || true';
+        $lines[] = '  image_source_advice';
         $lines[] = '  finish 1';
         $lines[] = 'fi';
         $appendSuccessCheck();
@@ -1451,7 +1972,7 @@ class ProjectController extends AbstractController
     {
         $output = [];
         $returnVar = 0;
-        exec('cd ' . escapeshellarg($this->projectPath) . ' && unset PHP_VERSION && ' . $this->composeHostEnvPrefix() . $command . ' 2>&1', $output, $returnVar);
+        exec('cd ' . escapeshellarg($this->projectPath) . ' && unset PHP_VERSION && DOCKER_BUILDKIT=0 COMPOSE_DOCKER_CLI_BUILD=0 ' . $this->composeHostEnvPrefix() . $command . ' 2>&1', $output, $returnVar);
         $text = implode("\n", $output);
         if ($returnVar !== 0) {
             throw new \RuntimeException($text !== '' ? $text : 'Command failed.');
@@ -1479,6 +2000,17 @@ class ProjectController extends AbstractController
         ];
 
         $assignments = [];
+        $assignments[] = 'DOCKER_DEVELOP_HOST_PATH=' . escapeshellarg($hostProjectRoot);
+        $registry = trim((string) ($env['BASE_IMAGE_REGISTRY'] ?? ''));
+        if ($registry !== '') {
+            $assignments[] = 'BASE_IMAGE_REGISTRY=' . escapeshellarg($registry);
+        }
+        $phpRegistry = trim((string) ($env['PHP_BASE_IMAGE_REGISTRY'] ?? ''));
+        if ($phpRegistry !== '') {
+            $assignments[] = 'PHP_BASE_IMAGE_REGISTRY=' . escapeshellarg($phpRegistry);
+        }
+
+
         foreach ($pathKeys as $key) {
             $value = (string) ($env[$key] ?? '');
             if ($this->isRelativeHostPath($value)) {
@@ -1586,17 +2118,46 @@ class ProjectController extends AbstractController
             || str_contains($message, 'failed to solve:');
     }
 
+    private function imageSourceAdvice(string $message): ?string
+    {
+        $lower = strtolower($message);
+        $needles = [
+            'manifest unknown',
+            'unknown blob',
+            'tls: first record',
+            'context deadline exceeded',
+            'client.timeout',
+            'registry-1.docker.io',
+            'pull access denied',
+        ];
+
+        foreach ($needles as $needle) {
+            if (str_contains($lower, $needle)) {
+                return 'Image source issue: configure Aliyun as Docker Desktop Docker Engine registry-mirrors, keep BASE_IMAGE_REGISTRY/PHP_BASE_IMAGE_REGISTRY empty, and do not use https://*.mirror.aliyuncs.com as a Dockerfile FROM prefix.';
+            }
+        }
+
+        return null;
+    }
+
     private function friendlyCommandError(\Throwable $e): string
     {
         $message = trim($e->getMessage());
         if ($message === '') {
-            return '命令执行失败。';
+            return 'Command failed.';
         }
+
+        $imageAdvice = $this->imageSourceAdvice($message);
+        if ($imageAdvice !== null) {
+            return $message . "\n\n" . $imageAdvice;
+        }
+
         if (str_contains($message, 'No such service')) {
-            return $message . "\n\n没有找到项目容器配置。Hyperf 项目需要先用脚手架生成专属容器，或检查 docker-compose.yml。";
+            return $message . "\n\nNo docker-compose service was found for this project. Check docker-compose.yml or regenerate the project service from the panel.";
         }
+
         if (str_contains($message, 'No such image') || str_contains($message, 'pull access denied')) {
-            return $message . "\n\n镜像还没有构建好。请先确认网络可用，或者让面板先执行一次 build 再启动。";
+            return $message . "\n\nThe image is not built or cannot be pulled. The panel will build automatically when the base images are reachable.";
         }
 
         return $message;

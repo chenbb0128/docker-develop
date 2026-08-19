@@ -1,16 +1,20 @@
 ARG PHP_VERSION
-FROM php:${PHP_VERSION}-fpm
+ARG PHP_BASE_IMAGE_REGISTRY=
+FROM ${PHP_BASE_IMAGE_REGISTRY}php:${PHP_VERSION}-fpm
 
 ARG CHANGE_SOURCE=false
-RUN if [ "${CHANGE_SOURCE}" == "true" ]; then \
+RUN if [ "${CHANGE_SOURCE}" = "true" ]; then \
+  if [ -f /etc/apt/sources.list.d/debian.sources ]; then \
+    sed -i 's#deb.debian.org#mirrors.tuna.tsinghua.edu.cn#g; s#security.debian.org#mirrors.tuna.tsinghua.edu.cn#g; s#security-cdn.debian.org#mirrors.tuna.tsinghua.edu.cn#g' /etc/apt/sources.list.d/debian.sources; \
+  fi; \
   # 检查 sources.list 是否存在且非空
-  if [ ! -f /etc/apt/sources.list ] || [ ! -s /etc/apt/sources.list ]; then \
+  if [ ! -f /etc/apt/sources.list ] && [ ! -f /etc/apt/sources.list.d/debian.sources ]; then \
     echo "deb http://deb.debian.org/debian bullseye main" > /etc/apt/sources.list && \
     echo "deb http://security.debian.org/debian-security bullseye-security main" >> /etc/apt/sources.list && \
     echo "deb http://deb.debian.org/debian bullseye-updates main" >> /etc/apt/sources.list; \
   fi; \
   # 检查源是否已被更改，如果没有，则更改源
-  if ! grep -q "mirrors.tuna.tsinghua.edu.cn" /etc/apt/sources.list; then \
+  if [ -f /etc/apt/sources.list ] && ! grep -q "mirrors.tuna.tsinghua.edu.cn" /etc/apt/sources.list; then \
     sed -i 's/deb.debian.org/mirrors.tuna.tsinghua.edu.cn/' /etc/apt/sources.list && \
     sed -i 's/security.debian.org/mirrors.tuna.tsinghua.edu.cn/' /etc/apt/sources.list && \
     sed -i 's/security-cdn.debian.org/mirrors.tuna.tsinghua.edu.cn/' /etc/apt/sources.list; \
@@ -20,12 +24,13 @@ fi
 # 必要的软件安装
 RUN set -xe; \
     apt-get update -yqq && \
-    pecl channel-update pecl.php.net && \
+    (pecl channel-update pecl.php.net || true) && \
     apt-get install -yqq \
       apt-utils \
       gnupg2 \
       git \
       libbrotli-dev \
+      libssl-dev \
       libzip-dev zip unzip && \
       if [ ${PHP_VERSION} = "7.3" ] || [ ${PHP_VERSION} = "7.4" ] || [ $(php -r "echo PHP_MAJOR_VERSION;") = "8" ]; then \
         docker-php-ext-configure zip; \
@@ -120,6 +125,8 @@ RUN set -eux; \
         pecl install swoole-4.8.12; \
       elif [ $(php -r "echo PHP_VERSION_ID - PHP_RELEASE_VERSION;") = "80000" ]; then \
         pecl install swoole-5.0.3; \
+      elif [ $(php -r "echo PHP_VERSION_ID - PHP_RELEASE_VERSION;") = "80100" ]; then \
+        pecl install swoole-6.1.9; \
       else \
         pecl install swoole; \
       fi; \
