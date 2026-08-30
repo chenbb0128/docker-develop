@@ -1,15 +1,15 @@
 {
   "projects": [
     {
-      "key": "demo-php",
-      "name": "Demo PHP 8.3",
-      "type": "php-fpm",
-      "path": "/develop/demo",
-      "php": "php83-fpm",
-      "port": 80,
-      "services": ["nginx", "php83-fpm", "redis"],
-      "url": "http://localhost",
-      "notes": "内置 demo 项目，用来验证 Nginx、PHP-FPM 和路径映射。默认站点 root 指向 /develop/demo/public。"
+      "key": "demo-go",
+      "name": "Demo Go API",
+      "type": "go",
+      "path": "/develop/demo-go",
+      "port": 8081,
+      "service": "go-demo-go",
+      "services": ["go-demo-go", "redis"],
+      "url": "http://localhost:8081",
+      "notes": "Built-in Go project example. The panel generates a dedicated Go compose service and starts selected dependencies automatically."
     }
   ]
 }

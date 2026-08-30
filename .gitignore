@@ -1,27 +1,16 @@
-# ===================================
-# Docker Develop 项目 .gitignore
-# ===================================
+# Docker Develop .gitignore
 
-# ===================================
-# 操作系统文件
-# ===================================
-# macOS
+# Operating system files
 .DS_Store
 .AppleDouble
 .LSOverride
 ._*
-
-# Windows
 Thumbs.db
 ehthumbs.db
 Desktop.ini
-
-# Linux
 *~
 
-# ===================================
-# IDE 和编辑器
-# ===================================
+# Editors
 .idea/
 .vscode/
 *.swp
@@ -33,17 +22,13 @@ Desktop.ini
 .classpath
 *.iml
 
-# ===================================
-# 环境配置
-# ===================================
+# Local panel environment
 .env
 !.env.example
 /projects.json
 !projects.example.json
 
-# ===================================
-# 日志和数据目录
-# ===================================
+# Logs and data
 /logs/
 !/logs/
 !/logs/.gitkeep
@@ -56,54 +41,29 @@ Desktop.ini
 /backups/
 /cache/
 !/cache/
+/cache/*
 !/cache/.gitkeep
 
-# ===================================
-# Docker Panel (Hyperf 应用)
-# ===================================
-# Composer 依赖
+# Docker Panel Go app
 /docker-panel/vendor/
-
-# 运行时文件
+/docker-panel/.gocache/
 /docker-panel/runtime/
-!/docker-panel/runtime/.gitkeep
-
-# Hyperf 容器代理缓存
-/docker-panel/.phpstorm.meta.php
-/docker-panel/_ide_helper.php
-
-# 环境配置
+/docker-panel/runtime/.gitkeep
 /docker-panel/.env
-!/docker-panel/.env.example
 
-# ===================================
-# Nginx 站点配置
-# ===================================
-# 保留示例文件，忽略实际配置
+# Nginx generated site configs
 /services/nginx/sites/*.conf
 !/services/nginx/sites/*.conf.example
 !/services/nginx/sites/default.conf
-
-# 备份文件
 /services/nginx/sites/*.bak.*
 
-# ===================================
-# SSL 证书
-# ===================================
+# SSL certificates
 /services/nginx/ssl/*.crt
 /services/nginx/ssl/*.key
 /services/nginx/ssl/*.pem
 !/services/nginx/ssl/.gitkeep
 
-# ===================================
-# PHP 配置（个人配置）
-# ===================================
-# 如果有个人自定义的 php.ini
-# /services/php-fpm/*.custom.ini
-
-# ===================================
-# 临时文件和备份
-# ===================================
+# Temporary files and backups
 *.tmp
 *.temp
 *.bak
@@ -111,9 +71,7 @@ Desktop.ini
 *.orig
 *.log
 
-# ===================================
-# Node.js (如果有前端项目)
-# ===================================
+# Node.js
 node_modules/
 npm-debug.log*
 yarn-debug.log*
@@ -121,23 +79,14 @@ yarn-error.log*
 .npm
 .yarn
 
-# ===================================
-# 构建产物
-# ===================================
+# Build artifacts
 /build/
 /dist/
 *.min.js
 *.min.css
 
-# ===================================
-# 测试覆盖率
-# ===================================
+# Coverage
 /coverage/
-.phpunit.result.cache
-phpunit.xml
 
-# ===================================
-# 其他
-# ===================================
-# Token 存储文件 (敏感信息)
+# Tokens
 /tmp/docker_panel_tokens.json

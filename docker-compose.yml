@@ -11,208 +11,30 @@ volumes:
     driver: ${VOLUMES_DRIVER}
   go-build-cache:
     driver: ${VOLUMES_DRIVER}
-  maven-cache:
-    driver: ${VOLUMES_DRIVER}
-  gradle-cache:
-    driver: ${VOLUMES_DRIVER}
-
-#---------------------------------------------
-# YAML Extension Fields (共享配置锚点)
-#---------------------------------------------
-x-php-fpm-common: &php-fpm-common
-  build:
-    context: ./services/php-fpm
-    args: &php-fpm-build-args
-      - CHANGE_SOURCE=${CHANGE_SOURCE}
-      - INSTALL_XDEBUG=${PHP_FPM_INSTALL_XDEBUG}
-      - XDEBUG_PORT=${PHP_FPM_XDEBUG_PORT}
-      - INSTALL_MONGO=${PHP_FPM_INSTALL_MONGO}
-      - INSTALL_PHPREDIS=${PHP_FPM_INSTALL_PHPREDIS}
-      - INSTALL_MEMCACHED=${PHP_FPM_INSTALL_MEMCACHED}
-      - INSTALL_OPCACHE=${PHP_FPM_INSTALL_OPCACHE}
-      - INSTALL_EXIF=${PHP_FPM_INSTALL_EXIF}
-      - INSTALL_MYSQLI=${PHP_FPM_INSTALL_MYSQLI}
-      - INSTALL_PDO_MYSQL=${PHP_FPM_INSTALL_PDO_MYSQL}
-      - INSTALL_SWOOLE=${PHP_FPM_INSTALL_SWOOLE}
-      - INSTALL_IMAGE_OPTIMIZERS=${PHP_FPM_INSTALL_IMAGE_OPTIMIZERS}
-      - INSTALL_IMAGEMAGICK=${PHP_FPM_INSTALL_IMAGEMAGICK}
-      - INSTALL_FFMPEG=${PHP_FPM_FFMPEG}
-      - INSTALL_PHALCON=${PHP_FPM_INSTALL_PHALCON}
-      - PHALCON_VERSION=${PHALCON_VERSION}
-      - INSTALL_PING=${PHP_FPM_INSTALL_PING}
-      - INSTALL_PHPDECIMAL=${PHP_FPM_INSTALL_PHPDECIMAL}
-      - PUID=${PHP_FPM_PUID}
-      - PGID=${PHP_FPM_PGID}
-      - IMAGEMAGICK_VERSION=${PHP_FPM_IMAGEMAGICK_VERSION}
-      - CONTAINER_PROJECT_PATH=${CONTAINER_PROJECT_PATH}
-      - INSTALL_COMPOSER=${INSTALL_COMPOSER}
-  expose:
-    - "9000"
-  extra_hosts:
-    - "dockerhost:${DOCKER_HOST_IP}"
-  networks:
-    - backend
 
 services:
 #---------------------------------------------
-# Workspace 开发工具容器
-#---------------------------------------------
-
-### Workspace Utilities ##################################
-  workspace:
-    build:
-      context: ./services/workspace
-      args:
-        - CHANGE_SOURCE=${CHANGE_SOURCE}
-        - UBUNTU_VERSION=${UBUNTU_VERSION}
-        - PHP_VERSION=${WORKSPACE_PHP_VERSION}
-        - INSTALL_XDEBUG=false
-        - XDEBUG_PORT=${WORKSPACE_XDEBUG_PORT}
-        - INSTALL_MONGO=${WORKSPACE_INSTALL_MONGO}
-        - INSTALL_PHPREDIS=${WORKSPACE_INSTALL_PHPREDIS}
-        - INSTALL_SWOOLE=${WORKSPACE_INSTALL_SWOOLE}
-        - INSTALL_COMPOSER=${WORKSPACE_INSTALL_COMPOSER}
-        - COMPOSER_VERSION=${WORKSPACE_COMPOSER_VERSION}
-        - COMPOSER_REPO_PACKAGIST=${WORKSPACE_COMPOSER_REPO_PACKAGIST}
-        - INSTALL_NODE=${WORKSPACE_INSTALL_NODE}
-        - NODE_VERSION=${WORKSPACE_NODE_VERSION}
-        - INSTALL_SUPERVISOR=${WORKSPACE_INSTALL_SUPERVISOR}
-        - SHELL_OH_MY_ZSH=${SHELL_OH_MY_ZSH}
-        - PUID=${WORKSPACE_PUID}
-        - PGID=${WORKSPACE_PGID}
-        - TZ=${TIMEZONE}
-        - CONTAINER_PROJECT_PATH=${CONTAINER_PROJECT_PATH}
-        - BASE_IMAGE_REGISTRY=${BASE_IMAGE_REGISTRY}
-    volumes:
-      - ${HOST_PROJECT_PATH}:${CONTAINER_PROJECT_PATH}
-      - ${DOCKER_DEVELOP_HOST_PATH:-.}/services/workspace/supervisord.d:/etc/supervisor/conf.d
-    extra_hosts:
-      - "dockerhost:${DOCKER_HOST_IP}"
-    tty: true
-    networks:
-      - frontend
-      - backend
-
-
-
-
-
-# BEGIN Hyperf project: hyperf-classmateserver
-
-  hyperf-classmateserver:
-    build:
-      context: ./services/workspace
-      args:
-        - CHANGE_SOURCE=${CHANGE_SOURCE}
-        - UBUNTU_VERSION=${UBUNTU_VERSION}
-        - PHP_VERSION=8.3
-        - INSTALL_XDEBUG=${WORKSPACE_INSTALL_XDEBUG}
-        - XDEBUG_PORT=${WORKSPACE_XDEBUG_PORT}
-        - INSTALL_MONGO=${WORKSPACE_INSTALL_MONGO}
-        - INSTALL_PHPREDIS=${WORKSPACE_INSTALL_PHPREDIS}
-        - INSTALL_SWOOLE=${WORKSPACE_INSTALL_SWOOLE}
-        - INSTALL_COMPOSER=${WORKSPACE_INSTALL_COMPOSER}
-        - COMPOSER_VERSION=${WORKSPACE_COMPOSER_VERSION}
-        - COMPOSER_REPO_PACKAGIST=${WORKSPACE_COMPOSER_REPO_PACKAGIST}
-        - INSTALL_NODE=${WORKSPACE_INSTALL_NODE}
-        - NODE_VERSION=${WORKSPACE_NODE_VERSION}
-        - INSTALL_SUPERVISOR=${WORKSPACE_INSTALL_SUPERVISOR}
-        - SHELL_OH_MY_ZSH=${SHELL_OH_MY_ZSH}
-        - PUID=${WORKSPACE_PUID}
-        - PGID=${WORKSPACE_PGID}
-        - TZ=${TIMEZONE}
-        - CONTAINER_PROJECT_PATH=${CONTAINER_PROJECT_PATH}
-    working_dir: '/develop/Hua/Projects/ClassMate/ClassMateServer'
-    command: sh -lc 'git config --global --add safe.directory "$$PWD" 2>/dev/null || true; if [ -f composer.json ] && [ ! -f vendor/autoload.php ]; then composer install --no-interaction --prefer-dist; fi; if [ ! -f bin/hyperf.php ]; then echo "Hyperf entry file missing."; echo "Check HOST_PROJECT_PATH in .env and the project path."; exit 66; fi; if php bin/hyperf.php list 2>/dev/null | grep -q "server:watch"; then php bin/hyperf.php server:watch; else php bin/hyperf.php start; fi'
-    volumes:
-      - ${HOST_PROJECT_PATH}:${CONTAINER_PROJECT_PATH}
-    extra_hosts:
-      - "dockerhost:${DOCKER_HOST_IP}"
-    ports:
-      - "9502:9501"
-    depends_on:
-      - redis
-    tty: true
-    networks:
-      - frontend
-      - backend
-# END Hyperf project: hyperf-classmateserver
-
-
-# BEGIN Java project: java-hoodly-joy-service
-
-  java-hoodly-joy-service:
-    build:
-      context: ./services/java
-      args:
-        - JAVA_VERSION=${JAVA_VERSION}
-        - MAVEN_VERSION=${MAVEN_VERSION}
-        - MAVEN_MIRROR=${MAVEN_MIRROR}
-        - PUID=${JAVA_PUID}
-        - PGID=${JAVA_PGID}
-        - CONTAINER_PROJECT_PATH=${CONTAINER_PROJECT_PATH}
-    working_dir: '/develop/Hua/Projects/hoodly-joy/hoodly-joy-service'
-    command: sh -lc 'export SERVER_PORT=8003; export PORT=8003; PORT=$${SERVER_PORT:-8080}; if [ -f pom.xml ]; then mvn spring-boot:run -Dspring-boot.run.arguments=--server.port=$$PORT; elif [ -f ./mvnw ]; then tr -d "\015" < ./mvnw > /tmp/project-mvnw && chmod +x /tmp/project-mvnw && sh /tmp/project-mvnw spring-boot:run -Dspring-boot.run.arguments=--server.port=$$PORT; elif [ -f ./gradlew ]; then tr -d "\015" < ./gradlew > /tmp/project-gradlew && chmod +x /tmp/project-gradlew && sh /tmp/project-gradlew bootRun --args=--server.port=$$PORT; else echo "No pom.xml, mvnw, or gradlew found"; exit 1; fi'
-    volumes:
-      - ${HOST_PROJECT_PATH}:${CONTAINER_PROJECT_PATH}
-      - maven-cache:/home/developer/.m2
-      - gradle-cache:/home/developer/.gradle
-    environment:
-      - TZ=${TIMEZONE}
-      - SERVER_PORT=8003
-      - PORT=8003
-      - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS}
-      - MAVEN_OPTS=${MAVEN_OPTS}
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - REDIS_PASSWORD=${REDIS_PASSWORD}
-      - DB_HOST=mysql
-      - DB_PORT=3306
-      - DB_NAME=${MYSQL_DATABASE}
-      - DB_USERNAME=root
-      - DB_PASSWORD=${MYSQL_ROOT_PASSWORD}
-      - RABBITMQ_HOST=rabbitmq
-      - RABBITMQ_PORT=5672
-      - RABBITMQ_USERNAME=guest
-      - RABBITMQ_PASSWORD=guest
-    ports:
-      - "8003:8003"
-    extra_hosts:
-      - "dockerhost:${DOCKER_HOST_IP}"
-      - "host.docker.internal:host-gateway"
-    depends_on:
-      redis:
-        condition: service_healthy
-      mysql:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-    tty: true
-    networks:
-      - frontend
-      - backend
-# END Java project: java-hoodly-joy-service
-
-#---------------------------------------------
-# Docker 管理面板 (Hyperf + Swoole)
+# Docker Panel (Go)
 #---------------------------------------------
 
 ### Docker Panel #########################################
   docker-panel:
     build:
       context: ./docker-panel
-      dockerfile: Dockerfile
-      args:
-        - DOCKER_PANEL_PHP_IMAGE=${DOCKER_PANEL_PHP_IMAGE:-php:8.3-cli-alpine}
-        - DOCKER_PANEL_COMPOSER_IMAGE=${DOCKER_PANEL_COMPOSER_IMAGE:-composer:2}
-        - COMPOSER_REPO_PACKAGIST=${WORKSPACE_COMPOSER_REPO_PACKAGIST}
-        - BASE_IMAGE_REGISTRY=${BASE_IMAGE_REGISTRY}
+      dockerfile: Dockerfile.panel-go
     volumes:
       - ${DOCKER_DEVELOP_HOST_PATH:-.}/docker-panel:/var/www/docker-panel
       - /var/run/docker.sock:/var/run/docker.sock
       - ${DOCKER_DEVELOP_HOST_PATH:-.}:/var/www/docker-develop
     working_dir: /var/www/docker-panel
-    command: sh -lc 'tr -d "\r" < start-panel.sh > /tmp/start-panel.sh && exec sh /tmp/start-panel.sh'
+    command: docker-panel-go
+    environment:
+      - PANEL_LISTEN_ADDR=0.0.0.0:9501
+      - PANEL_PROJECT_ROOT=/var/www/docker-develop
+      - PANEL_WEB_DIR=/var/www/docker-panel/public
+      - PANEL_STATE_DIR=/var/www/docker-panel/runtime
+      - PANEL_ENV_FILE=/var/www/docker-develop/.env
+      - PANEL_TASK_BUILD_TIMEOUT=30m
     ports:
       - "127.0.0.1:9501:9501"
     extra_hosts:
@@ -220,199 +42,6 @@ services:
     networks:
       - frontend
       - backend
-
-#---------------------------------------------
-# PHP-FPM 多版本支持
-#---------------------------------------------
-
-### 默认 PHP (${PHP_VERSION}) #############################
-  php-fpm:
-    <<: *php-fpm-common
-    build:
-      context: ./services/php-fpm
-      args:
-        - CHANGE_SOURCE=${CHANGE_SOURCE}
-        - PHP_VERSION=${PHP_VERSION}
-        - INSTALL_XDEBUG=${PHP_FPM_INSTALL_XDEBUG}
-        - XDEBUG_PORT=${PHP_FPM_XDEBUG_PORT}
-        - INSTALL_MONGO=${PHP_FPM_INSTALL_MONGO}
-        - INSTALL_PHPREDIS=${PHP_FPM_INSTALL_PHPREDIS}
-        - INSTALL_MEMCACHED=${PHP_FPM_INSTALL_MEMCACHED}
-        - INSTALL_OPCACHE=${PHP_FPM_INSTALL_OPCACHE}
-        - INSTALL_EXIF=${PHP_FPM_INSTALL_EXIF}
-        - INSTALL_MYSQLI=${PHP_FPM_INSTALL_MYSQLI}
-        - INSTALL_PDO_MYSQL=${PHP_FPM_INSTALL_PDO_MYSQL}
-        - INSTALL_SWOOLE=${PHP_FPM_INSTALL_SWOOLE}
-        - INSTALL_IMAGE_OPTIMIZERS=${PHP_FPM_INSTALL_IMAGE_OPTIMIZERS}
-        - INSTALL_IMAGEMAGICK=${PHP_FPM_INSTALL_IMAGEMAGICK}
-        - INSTALL_FFMPEG=${PHP_FPM_FFMPEG}
-        - INSTALL_PHALCON=${PHP_FPM_INSTALL_PHALCON}
-        - PHALCON_VERSION=${PHALCON_VERSION}
-        - INSTALL_PING=${PHP_FPM_INSTALL_PING}
-        - INSTALL_PHPDECIMAL=${PHP_FPM_INSTALL_PHPDECIMAL}
-        - PUID=${PHP_FPM_PUID}
-        - PGID=${PHP_FPM_PGID}
-        - IMAGEMAGICK_VERSION=${PHP_FPM_IMAGEMAGICK_VERSION}
-        - CONTAINER_PROJECT_PATH=${CONTAINER_PROJECT_PATH}
-        - INSTALL_COMPOSER=${INSTALL_COMPOSER}
-        - COMPOSER_REPO_PACKAGIST=${WORKSPACE_COMPOSER_REPO_PACKAGIST}
-        - BASE_IMAGE_REGISTRY=${BASE_IMAGE_REGISTRY}
-        - PHP_BASE_IMAGE_REGISTRY=${PHP_BASE_IMAGE_REGISTRY}
-    volumes:
-      - ${HOST_PROJECT_PATH}:${CONTAINER_PROJECT_PATH}
-      - ${DOCKER_DEVELOP_HOST_PATH:-.}/services/php-fpm/php${PHP_VERSION}.ini:/usr/local/etc/php/php.ini
-      - /var/run/docker.sock:/var/run/docker.sock
-      - ${DOCKER_DEVELOP_HOST_PATH:-.}/docker-panel:/var/www/docker-panel
-
-### PHP 7.3 #########################################
-  php73-fpm:
-    <<: *php-fpm-common
-    build:
-      context: ./services/php-fpm
-      args:
-        - CHANGE_SOURCE=${CHANGE_SOURCE}
-        - PHP_VERSION=7.3
-        - INSTALL_XDEBUG=${PHP_FPM_INSTALL_XDEBUG}
-        - XDEBUG_PORT=${PHP_FPM_XDEBUG_PORT}
-        - INSTALL_MONGO=${PHP_FPM_INSTALL_MONGO}
-        - INSTALL_PHPREDIS=${PHP_FPM_INSTALL_PHPREDIS}
-        - INSTALL_MEMCACHED=${PHP_FPM_INSTALL_MEMCACHED}
-        - INSTALL_OPCACHE=${PHP_FPM_INSTALL_OPCACHE}
-        - INSTALL_EXIF=${PHP_FPM_INSTALL_EXIF}
-        - INSTALL_MYSQLI=${PHP_FPM_INSTALL_MYSQLI}
-        - INSTALL_PDO_MYSQL=${PHP_FPM_INSTALL_PDO_MYSQL}
-        - INSTALL_SWOOLE=${PHP_FPM_INSTALL_SWOOLE}
-        - INSTALL_IMAGE_OPTIMIZERS=${PHP_FPM_INSTALL_IMAGE_OPTIMIZERS}
-        - INSTALL_IMAGEMAGICK=${PHP_FPM_INSTALL_IMAGEMAGICK}
-        - INSTALL_FFMPEG=${PHP_FPM_FFMPEG}
-        - INSTALL_PHALCON=${PHP_FPM_INSTALL_PHALCON}
-        - PHALCON_VERSION=${PHALCON_VERSION}
-        - INSTALL_PING=${PHP_FPM_INSTALL_PING}
-        - INSTALL_PHPDECIMAL=${PHP_FPM_INSTALL_PHPDECIMAL}
-        - PUID=${PHP_FPM_PUID}
-        - PGID=${PHP_FPM_PGID}
-        - IMAGEMAGICK_VERSION=${PHP_FPM_IMAGEMAGICK_VERSION}
-        - CONTAINER_PROJECT_PATH=${CONTAINER_PROJECT_PATH}
-        - INSTALL_COMPOSER=${INSTALL_COMPOSER}
-        - COMPOSER_REPO_PACKAGIST=${WORKSPACE_COMPOSER_REPO_PACKAGIST}
-        - BASE_IMAGE_REGISTRY=${BASE_IMAGE_REGISTRY}
-        - PHP_BASE_IMAGE_REGISTRY=${PHP_BASE_IMAGE_REGISTRY}
-    volumes:
-      - ${HOST_PROJECT_PATH}:${CONTAINER_PROJECT_PATH}
-      - ${DOCKER_DEVELOP_HOST_PATH:-.}/services/php-fpm/php7.3.ini:/usr/local/etc/php/php.ini
-
-### PHP 8.0 #########################################
-  php80-fpm:
-    <<: *php-fpm-common
-    build:
-      context: ./services/php-fpm
-      args:
-        - CHANGE_SOURCE=${CHANGE_SOURCE}
-        - PHP_VERSION=8.0
-        - INSTALL_XDEBUG=${PHP_FPM_INSTALL_XDEBUG}
-        - XDEBUG_PORT=${PHP_FPM_XDEBUG_PORT}
-        - INSTALL_MONGO=${PHP_FPM_INSTALL_MONGO}
-        - INSTALL_PHPREDIS=${PHP_FPM_INSTALL_PHPREDIS}
-        - INSTALL_MEMCACHED=${PHP_FPM_INSTALL_MEMCACHED}
-        - INSTALL_OPCACHE=${PHP_FPM_INSTALL_OPCACHE}
-        - INSTALL_EXIF=${PHP_FPM_INSTALL_EXIF}
-        - INSTALL_MYSQLI=${PHP_FPM_INSTALL_MYSQLI}
-        - INSTALL_PDO_MYSQL=${PHP_FPM_INSTALL_PDO_MYSQL}
-        - INSTALL_SWOOLE=${PHP_FPM_INSTALL_SWOOLE}
-        - INSTALL_IMAGE_OPTIMIZERS=${PHP_FPM_INSTALL_IMAGE_OPTIMIZERS}
-        - INSTALL_IMAGEMAGICK=${PHP_FPM_INSTALL_IMAGEMAGICK}
-        - INSTALL_FFMPEG=${PHP_FPM_FFMPEG}
-        - INSTALL_PHALCON=${PHP_FPM_INSTALL_PHALCON}
-        - PHALCON_VERSION=${PHALCON_VERSION}
-        - INSTALL_PING=${PHP_FPM_INSTALL_PING}
-        - INSTALL_PHPDECIMAL=${PHP_FPM_INSTALL_PHPDECIMAL}
-        - PUID=${PHP_FPM_PUID}
-        - PGID=${PHP_FPM_PGID}
-        - IMAGEMAGICK_VERSION=${PHP_FPM_IMAGEMAGICK_VERSION}
-        - CONTAINER_PROJECT_PATH=${CONTAINER_PROJECT_PATH}
-        - INSTALL_COMPOSER=${INSTALL_COMPOSER}
-        - COMPOSER_REPO_PACKAGIST=${WORKSPACE_COMPOSER_REPO_PACKAGIST}
-        - BASE_IMAGE_REGISTRY=${BASE_IMAGE_REGISTRY}
-        - PHP_BASE_IMAGE_REGISTRY=${PHP_BASE_IMAGE_REGISTRY}
-    volumes:
-      - ${HOST_PROJECT_PATH}:${CONTAINER_PROJECT_PATH}
-      - ${DOCKER_DEVELOP_HOST_PATH:-.}/services/php-fpm/php8.0.ini:/usr/local/etc/php/php.ini
-
-### PHP 8.1 #########################################
-  php81-fpm:
-    <<: *php-fpm-common
-    build:
-      context: ./services/php-fpm
-      args:
-        - CHANGE_SOURCE=${CHANGE_SOURCE}
-        - PHP_VERSION=8.1
-        - INSTALL_XDEBUG=${PHP_FPM_INSTALL_XDEBUG}
-        - XDEBUG_PORT=${PHP_FPM_XDEBUG_PORT}
-        - INSTALL_MONGO=${PHP_FPM_INSTALL_MONGO}
-        - INSTALL_PHPREDIS=${PHP_FPM_INSTALL_PHPREDIS}
-        - INSTALL_MEMCACHED=${PHP_FPM_INSTALL_MEMCACHED}
-        - INSTALL_OPCACHE=${PHP_FPM_INSTALL_OPCACHE}
-        - INSTALL_EXIF=${PHP_FPM_INSTALL_EXIF}
-        - INSTALL_MYSQLI=${PHP_FPM_INSTALL_MYSQLI}
-        - INSTALL_PDO_MYSQL=${PHP_FPM_INSTALL_PDO_MYSQL}
-        - INSTALL_SWOOLE=${PHP_FPM_INSTALL_SWOOLE}
-        - INSTALL_IMAGE_OPTIMIZERS=${PHP_FPM_INSTALL_IMAGE_OPTIMIZERS}
-        - INSTALL_IMAGEMAGICK=${PHP_FPM_INSTALL_IMAGEMAGICK}
-        - INSTALL_FFMPEG=${PHP_FPM_FFMPEG}
-        - INSTALL_PHALCON=${PHP_FPM_INSTALL_PHALCON}
-        - PHALCON_VERSION=${PHALCON_VERSION}
-        - INSTALL_PING=${PHP_FPM_INSTALL_PING}
-        - INSTALL_PHPDECIMAL=${PHP_FPM_INSTALL_PHPDECIMAL}
-        - PUID=${PHP_FPM_PUID}
-        - PGID=${PHP_FPM_PGID}
-        - IMAGEMAGICK_VERSION=${PHP_FPM_IMAGEMAGICK_VERSION}
-        - CONTAINER_PROJECT_PATH=${CONTAINER_PROJECT_PATH}
-        - INSTALL_COMPOSER=${INSTALL_COMPOSER}
-        - COMPOSER_REPO_PACKAGIST=${WORKSPACE_COMPOSER_REPO_PACKAGIST}
-        - BASE_IMAGE_REGISTRY=${BASE_IMAGE_REGISTRY}
-        - PHP_BASE_IMAGE_REGISTRY=${PHP_BASE_IMAGE_REGISTRY}
-    volumes:
-      - ${HOST_PROJECT_PATH}:${CONTAINER_PROJECT_PATH}
-      - ${DOCKER_DEVELOP_HOST_PATH:-.}/services/php-fpm/php8.1.ini:/usr/local/etc/php/php.ini
-
-### PHP 8.3 #########################################
-  php83-fpm:
-    <<: *php-fpm-common
-    build:
-      context: ./services/php-fpm
-      args:
-        - CHANGE_SOURCE=${CHANGE_SOURCE}
-        - PHP_VERSION=8.3
-        - INSTALL_XDEBUG=${PHP_FPM_INSTALL_XDEBUG}
-        - XDEBUG_PORT=${PHP_FPM_XDEBUG_PORT}
-        - INSTALL_MONGO=${PHP_FPM_INSTALL_MONGO}
-        - INSTALL_PHPREDIS=${PHP_FPM_INSTALL_PHPREDIS}
-        - INSTALL_MEMCACHED=${PHP_FPM_INSTALL_MEMCACHED}
-        - INSTALL_OPCACHE=${PHP_FPM_INSTALL_OPCACHE}
-        - INSTALL_EXIF=${PHP_FPM_INSTALL_EXIF}
-        - INSTALL_MYSQLI=${PHP_FPM_INSTALL_MYSQLI}
-        - INSTALL_PDO_MYSQL=${PHP_FPM_INSTALL_PDO_MYSQL}
-        - INSTALL_SWOOLE=${PHP_FPM_INSTALL_SWOOLE}
-        - INSTALL_IMAGE_OPTIMIZERS=${PHP_FPM_INSTALL_IMAGE_OPTIMIZERS}
-        - INSTALL_IMAGEMAGICK=${PHP_FPM_INSTALL_IMAGEMAGICK}
-        - INSTALL_FFMPEG=${PHP_FPM_FFMPEG}
-        - INSTALL_PHALCON=${PHP_FPM_INSTALL_PHALCON}
-        - PHALCON_VERSION=${PHALCON_VERSION}
-        - INSTALL_PING=${PHP_FPM_INSTALL_PING}
-        - INSTALL_PHPDECIMAL=${PHP_FPM_INSTALL_PHPDECIMAL}
-        - PUID=${PHP_FPM_PUID}
-        - PGID=${PHP_FPM_PGID}
-        - IMAGEMAGICK_VERSION=${PHP_FPM_IMAGEMAGICK_VERSION}
-        - CONTAINER_PROJECT_PATH=${CONTAINER_PROJECT_PATH}
-        - INSTALL_COMPOSER=${INSTALL_COMPOSER}
-        - COMPOSER_REPO_PACKAGIST=${WORKSPACE_COMPOSER_REPO_PACKAGIST}
-        - BASE_IMAGE_REGISTRY=${BASE_IMAGE_REGISTRY}
-        - PHP_BASE_IMAGE_REGISTRY=${PHP_BASE_IMAGE_REGISTRY}
-    volumes:
-      - ${HOST_PROJECT_PATH}:${CONTAINER_PROJECT_PATH}
-      - ${DOCKER_DEVELOP_HOST_PATH:-.}/services/php-fpm/php8.3.ini:/usr/local/etc/php/php.ini
-
-
 
 # BEGIN Go project: go-hoodly-joy-go
 
@@ -467,6 +96,111 @@ services:
 # END Go project: go-hoodly-joy-go
 
 
+# BEGIN Go project: go-edusystem-v2-api
+
+  go-edusystem-v2-api:
+    build:
+      context: ./services/go
+      args:
+        - GO_VERSION=${GO_VERSION}
+        - GOPROXY=${GOPROXY}
+        - PUID=${GO_PUID}
+        - PGID=${GO_PGID}
+        - CONTAINER_PROJECT_PATH=${CONTAINER_PROJECT_PATH}
+        - INSTALL_DELVE=${GO_INSTALL_DELVE}
+        - CHANGE_SOURCE=${CHANGE_SOURCE}
+        - BASE_IMAGE_REGISTRY=${BASE_IMAGE_REGISTRY}
+    working_dir: '/develop/Hua/Projects/EduSystem/refactor/server'
+    command: sh -c 'export PATH=/go/bin:/usr/local/go/bin:$$PATH; go mod download; export EDUSYSTEM_HTTP_ADDR=:8080; export EDUSYSTEM_DATABASE_ENABLED=true; export EDUSYSTEM_DATABASE_DSN="root:$${DB_PASSWORD}@tcp(mysql:3306)/edu_system_dev"; export EDUSYSTEM_REDIS_ENABLED=true; export EDUSYSTEM_REDIS_ADDR=redis:6379; export EDUSYSTEM_REDIS_PASSWORD="$${REDIS_PASSWORD}"; export EDUSYSTEM_JWT_SECRET=edusystem_local_develop_secret_at_least_32_chars; exec go run ./cmd/api'
+    volumes:
+      - ${HOST_PROJECT_PATH}:${CONTAINER_PROJECT_PATH}
+      - go-mod-cache:/go/pkg/mod
+      - go-build-cache:/home/developer/.cache/go-build
+    environment:
+      - TZ=${TIMEZONE}
+      - GO111MODULE=on
+      - GOPROXY=${GOPROXY}
+      - CGO_ENABLED=${GO_CGO_ENABLED}
+      - PORT=8080
+      - SERVER_PORT=8080
+      - APP_PORT=8080
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_NAME=${MYSQL_DATABASE}
+      - DB_USERNAME=root
+      - DB_PASSWORD=${MYSQL_ROOT_PASSWORD}
+    ports:
+      - "18081:8080"
+    extra_hosts:
+      - "dockerhost:${DOCKER_HOST_IP}"
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      redis:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+    tty: true
+    networks:
+      - frontend
+      - backend
+# END Go project: go-edusystem-v2-api
+
+
+# BEGIN Go project: go-city-parking-server
+
+  go-city-parking-server:
+    build:
+      context: ./services/go
+      args:
+        - GO_VERSION=${GO_VERSION}
+        - GOPROXY=${GOPROXY}
+        - PUID=${GO_PUID}
+        - PGID=${GO_PGID}
+        - CONTAINER_PROJECT_PATH=${CONTAINER_PROJECT_PATH}
+        - INSTALL_DELVE=${GO_INSTALL_DELVE}
+        - CHANGE_SOURCE=${CHANGE_SOURCE}
+        - BASE_IMAGE_REGISTRY=${BASE_IMAGE_REGISTRY}
+    working_dir: '/develop/Hua/Projects/CityParking/city-parking-server'
+    command: sh -c 'export PATH=/go/bin:/usr/local/go/bin:$$PATH; go mod download; export CITY_PARKING_HTTP_PORT=8080; export CITY_PARKING_REPOSITORY=mysql; export CITY_PARKING_MYSQL_DSN="root:$${DB_PASSWORD}@tcp(mysql:3306)/city_parking?parseTime=true&loc=UTC"; export CITY_PARKING_MIGRATE_CREATE_DATABASE=true; export CITY_PARKING_REDIS_ENABLED=true; export CITY_PARKING_REDIS_ADDR=redis:6379; export CITY_PARKING_REDIS_PASSWORD="$${REDIS_PASSWORD}"; export CITY_PARKING_REDIS_PING_TIMEOUT=500ms; go run ./cmd/migrate; exec go run ./cmd/api'
+    volumes:
+      - ${HOST_PROJECT_PATH}:${CONTAINER_PROJECT_PATH}
+      - go-mod-cache:/go/pkg/mod
+      - go-build-cache:/home/developer/.cache/go-build
+    environment:
+      - TZ=${TIMEZONE}
+      - GO111MODULE=on
+      - GOPROXY=${GOPROXY}
+      - CGO_ENABLED=${GO_CGO_ENABLED}
+      - PORT=8080
+      - SERVER_PORT=8080
+      - APP_PORT=8080
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_NAME=city_parking
+      - DB_USERNAME=root
+      - DB_PASSWORD=${MYSQL_ROOT_PASSWORD}
+    ports:
+      - "23458:8080"
+    extra_hosts:
+      - "dockerhost:${DOCKER_HOST_IP}"
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      redis:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+    tty: true
+    networks:
+      - frontend
+      - backend
+# END Go project: go-city-parking-server
+
 #---------------------------------------------
 # Go Development Environment
 #---------------------------------------------
@@ -508,43 +242,6 @@ services:
 
 
 #---------------------------------------------
-# Java Development Environment
-#---------------------------------------------
-
-### Java Development #######################################
-  java:
-    build:
-      context: ./services/java
-      args:
-        - JAVA_VERSION=${JAVA_VERSION}
-        - MAVEN_VERSION=${MAVEN_VERSION}
-        - MAVEN_MIRROR=${MAVEN_MIRROR}
-        - PUID=${JAVA_PUID}
-        - PGID=${JAVA_PGID}
-        - CONTAINER_PROJECT_PATH=${CONTAINER_PROJECT_PATH}
-        - BASE_IMAGE_REGISTRY=${BASE_IMAGE_REGISTRY}
-    working_dir: ${CONTAINER_PROJECT_PATH}
-    command: tail -f /dev/null
-    volumes:
-      - ${HOST_PROJECT_PATH}:${CONTAINER_PROJECT_PATH}
-      - maven-cache:/home/developer/.m2
-      - gradle-cache:/home/developer/.gradle
-    environment:
-      - TZ=${TIMEZONE}
-      - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS}
-      - MAVEN_OPTS=${MAVEN_OPTS}
-    ports:
-      - "${JAVA_HOST_PORT}:8080"
-      - "${JAVA_DEBUG_PORT}:5005"
-    extra_hosts:
-      - "dockerhost:${DOCKER_HOST_IP}"
-      - "host.docker.internal:host-gateway"
-    tty: true
-    networks:
-      - frontend
-      - backend
-
-#---------------------------------------------
 # Web Server
 #---------------------------------------------
 
@@ -554,12 +251,7 @@ services:
       context: ./services/nginx
       args:
         - CHANGE_SOURCE=${CHANGE_SOURCE}
-        - PHP_UPSTREAM_CONTAINER=${NGINX_PHP_UPSTREAM_CONTAINER}
-        - PHP_UPSTREAM_PORT=${NGINX_PHP_UPSTREAM_PORT}
         - BASE_IMAGE_REGISTRY=${BASE_IMAGE_REGISTRY}
-    environment:
-      - PHP_UPSTREAM_CONTAINER=${NGINX_PHP_UPSTREAM_CONTAINER}
-      - PHP_UPSTREAM_PORT=${NGINX_PHP_UPSTREAM_PORT}
     volumes:
       - ${NGINX_HOST_LOG_PATH}:/var/log/nginx
       - ${NGINX_SITES_PATH}:/etc/nginx/sites
@@ -573,9 +265,6 @@ services:
       - "7001:7001"
       - "7002:7002"
       - "8002:8002"
-    depends_on:
-      - php83-fpm
-      - redis
     networks:
       - frontend
       - backend
@@ -583,7 +272,7 @@ services:
       - "host.docker.internal:host-gateway"
 
 #---------------------------------------------
-# 数据存储服务
+# Data services
 #---------------------------------------------
 
 ### MySQL ################################################
@@ -644,7 +333,7 @@ services:
       - backend
 
 #---------------------------------------------
-# 消息队列与搜索服务
+# Queue and search services
 #---------------------------------------------
 
 ### Memcached ############################################
@@ -695,7 +384,6 @@ services:
 #      - xpack.security.enabled=false
 #      - xpack.security.transport.ssl.enabled=false
 #      - indices.id_field_data.enabled=true
-#      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
 #      - cluster.initial_master_nodes=docker-node
 #    ulimits:
 #      memlock:

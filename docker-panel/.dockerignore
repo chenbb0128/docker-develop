@@ -1,0 +1,6 @@
+.gocache
+runtime
+vendor
+*.log
+*.bak.*
+.DS_Store

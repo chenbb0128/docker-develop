@@ -1,0 +1,28 @@
+FROM golang:1.25-alpine AS build
+
+WORKDIR /src
+RUN apk add --no-cache git ca-certificates
+
+COPY go.mod go.sum* ./
+RUN go mod download
+
+COPY . .
+RUN CGO_ENABLED=0 GOOS=linux go build -mod=mod \
+    -ldflags="-s -w" \
+    -o /out/docker-panel-go ./cmd/panel
+
+FROM alpine:3.20
+
+RUN apk add --no-cache ca-certificates docker-cli docker-cli-compose tzdata
+
+WORKDIR /var/www/docker-panel
+COPY --from=build /out/docker-panel-go /usr/local/bin/docker-panel-go
+COPY public ./public
+
+ENV PANEL_LISTEN_ADDR=0.0.0.0:9501 \
+    PANEL_PROJECT_ROOT=/var/www/docker-develop \
+    PANEL_WEB_DIR=/var/www/docker-panel/public \
+    PANEL_STATE_DIR=/var/www/docker-panel/runtime
+EXPOSE 9501
+
+CMD ["docker-panel-go"]
