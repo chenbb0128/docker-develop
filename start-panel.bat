@@ -10,10 +10,10 @@ echo Docker Develop startup
 echo ============================================
 echo.
 
-set "COMPOSE_CMD=docker-compose"
-where docker-compose >nul 2>&1
+set "COMPOSE_CMD=docker compose"
+docker compose version >nul 2>&1
 if errorlevel 1 (
-    docker compose version >nul 2>&1
+    where docker-compose >nul 2>&1
     if errorlevel 1 (
         echo Docker Compose is not available.
         echo Please install Docker Desktop with Docker Compose, then run this script again.
@@ -21,7 +21,7 @@ if errorlevel 1 (
         pause
         exit /b 1
     )
-    set "COMPOSE_CMD=docker compose"
+    set "COMPOSE_CMD=docker-compose"
 )
 
 echo [1/6] Checking Docker Desktop...
@@ -67,24 +67,24 @@ if errorlevel 1 (
 
 echo.
 echo [4/6] Starting docker-panel service...
-%COMPOSE_CMD% up -d docker-panel
+%COMPOSE_CMD% up -d --build docker-panel
 if errorlevel 1 (
     echo.
     echo Failed to start docker-panel.
     echo.
     echo Common cause:
-    echo Docker cannot pull base images from Docker Hub, for example php:8.3-cli-alpine or composer:2.
+    echo Check the build error above: golang:1.25-alpine, alpine:3.20, Go modules or system packages may be unreachable.
     echo.
     echo Fix:
     echo 1. Configure Docker Engine registry-mirrors in Docker Desktop or Docker daemon, then restart Docker.
-    echo 2. Or set DOCKER_PANEL_PHP_IMAGE and DOCKER_PANEL_COMPOSER_IMAGE in .env to a reachable image proxy.
+    echo 2. Confirm Docker Desktop uses Linux containers and the configured host paths exist.
     echo 3. Rerun start-panel.bat.
     echo.
     echo Recent docker-panel logs:
     %COMPOSE_CMD% logs --tail=80 docker-panel
     echo.
     echo You can run this command manually to see details:
-    echo %COMPOSE_CMD% up -d docker-panel
+    echo %COMPOSE_CMD% up -d --build docker-panel
     echo.
     pause
     exit /b 1
@@ -92,12 +92,14 @@ if errorlevel 1 (
 
 echo.
 echo [5/6] Waiting for panel HTTP...
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$ok=$false; for($i=1;$i -le 20;$i++){ try { $r=Invoke-WebRequest -Uri 'http://localhost:9501' -UseBasicParsing -TimeoutSec 3; if($r.StatusCode -ge 200 -and $r.StatusCode -lt 500){ Write-Host ('Panel HTTP is ready: ' + $r.StatusCode); $ok=$true; break } } catch { Write-Host ('Waiting for panel... ' + $i + '/20'); Start-Sleep -Seconds 2 } }; if(-not $ok){ exit 1 }"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$ok=$false; for($i=1;$i -le 20;$i++){ try { $r=Invoke-WebRequest -Uri 'http://localhost:9501/api/ready' -UseBasicParsing -TimeoutSec 3; if($r.StatusCode -eq 200){ Write-Host ('Panel HTTP is ready: ' + $r.StatusCode); $ok=$true; break } } catch { Write-Host ('Waiting for panel... ' + $i + '/20'); Start-Sleep -Seconds 2 } }; if(-not $ok){ exit 1 }"
 if errorlevel 1 (
     echo Panel did not respond in time. Recent docker-panel logs:
     %COMPOSE_CMD% logs --tail=120 docker-panel
     echo.
-    echo The container may still be installing Composer dependencies. You can retry opening http://localhost:9501 in a moment.
+    echo Panel readiness failed. Check Docker socket access, state directory permissions and projects.json.
+    pause
+    exit /b 1
 ) else (
     echo Panel HTTP is reachable.
 )

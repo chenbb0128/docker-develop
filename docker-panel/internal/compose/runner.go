@@ -19,7 +19,6 @@ type Runner struct {
 	ProjectRoot string
 	EnvFile     string
 	command     []string
-	hostRoot    string
 }
 
 type Result struct {
@@ -45,7 +44,10 @@ func (r *Runner) Run(ctx context.Context, args ...string) (Result, error) {
 	fullArgs = append(fullArgs, args...)
 	cmd := exec.CommandContext(ctx, cmdSpec[0], fullArgs...)
 	cmd.Dir = r.ProjectRoot
-	cmd.Env = r.composeEnv(ctx)
+	cmd.Env, err = r.composeEnv(ctx)
+	if err != nil {
+		return Result{ExitCode: -1}, err
+	}
 
 	var output bytes.Buffer
 	cmd.Stdout = &output
@@ -162,29 +164,59 @@ func (r *Runner) commandSpec() ([]string, error) {
 	return nil, errors.New("docker-compose or docker compose was not found")
 }
 
-func (r *Runner) composeEnv(ctx context.Context) []string {
-	env := make([]string, 0, len(os.Environ())+12)
-	for _, item := range os.Environ() {
-		name := item
-		if index := strings.IndexByte(item, '='); index >= 0 {
-			name = item[:index]
+func (r *Runner) composeEnv(ctx context.Context) ([]string, error) {
+	mounts, err := r.inspectMounts(ctx)
+	if _, containerErr := os.Stat("/.dockerenv"); containerErr == nil {
+		if err != nil {
+			return nil, fmt.Errorf("resolve panel host mounts: %w", err)
 		}
-		switch name {
-		case "BASE_IMAGE_REGISTRY":
-			continue
-		default:
-			env = append(env, item)
+		found := false
+		for _, mount := range mounts {
+			if filepath.Clean(mount.Destination) == filepath.Clean(r.ProjectRoot) && mount.Source != "" {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return nil, errors.New("panel repository bind mount not found; rerun the panel startup script")
+		}
+	}
+	return r.envWithMounts(mounts), nil
+}
+
+const hostPathMountPrefix = "/var/run/docker-develop/host-paths/"
+
+type hostMount struct {
+	Source      string `json:"Source"`
+	Destination string `json:"Destination"`
+}
+
+func (r *Runner) envWithMounts(mounts []hostMount) []string {
+	env := make(map[string]string)
+	for _, item := range os.Environ() {
+		if name, value, ok := strings.Cut(item, "="); ok {
+			env[name] = value
 		}
 	}
 
-	hostRoot := r.hostProjectRoot(ctx)
+	hostRoot := r.ProjectRoot
+	if value := strings.TrimSpace(env["DOCKER_DEVELOP_HOST_PATH"]); value != "" {
+		hostRoot = value
+	}
+	sources := make(map[string]string)
+	for _, mount := range mounts {
+		if mount.Source != "" {
+			sources[filepath.ToSlash(filepath.Clean(mount.Destination))] = mount.Source
+		}
+	}
+	if source := sources[filepath.ToSlash(filepath.Clean(r.ProjectRoot))]; source != "" {
+		hostRoot = source
+	}
 	values := readEnvFile(r.EnvFile)
-	env = append(env,
-		"DOCKER_BUILDKIT=0",
-		"COMPOSE_DOCKER_CLI_BUILD=0",
-		"DOCKER_DEVELOP_HOST_PATH="+hostRoot,
-		"BASE_IMAGE_REGISTRY=",
-	)
+	env["DOCKER_BUILDKIT"] = "0"
+	env["COMPOSE_DOCKER_CLI_BUILD"] = "0"
+	env["DOCKER_DEVELOP_HOST_PATH"] = hostRoot
+	env["BASE_IMAGE_REGISTRY"] = ""
 
 	for _, key := range []string{
 		"HOST_PROJECT_PATH",
@@ -195,27 +227,35 @@ func (r *Runner) composeEnv(ctx context.Context) []string {
 		"MYSQL_HOST_DATA_PATH",
 		"MYSQL_ENTRYPOINT_INITDB",
 	} {
-		if value, ok := values[key]; ok && isRelativeHostPath(value) {
-			env = append(env, key+"="+joinHostPath(hostRoot, value))
+		// WSL paths may be opaque Docker Desktop mappings, not /mnt/c paths.
+		if source := sources[hostPathMountPrefix+key]; source != "" {
+			env[key] = source
+			continue
+		}
+		value := env[key]
+		if value == "" {
+			value = values[key]
+		}
+		if isRelativeHostPath(value) {
+			env[key] = joinHostPath(hostRoot, value)
 		}
 	}
 
-	return env
+	result := make([]string, 0, len(env))
+	for key, value := range env {
+		result = append(result, key+"="+value)
+	}
+	sort.Strings(result)
+	return result
 }
 
-func (r *Runner) hostProjectRoot(ctx context.Context) string {
-	if r.hostRoot != "" {
-		return r.hostRoot
-	}
-	fallback := strings.TrimSpace(os.Getenv("DOCKER_DEVELOP_HOST_PATH"))
-	if fallback == "" {
-		fallback = r.ProjectRoot
-	}
-
+func (r *Runner) inspectMounts(ctx context.Context) ([]hostMount, error) {
 	hostname, err := os.Hostname()
-	if err != nil || hostname == "" {
-		r.hostRoot = fallback
-		return r.hostRoot
+	if err != nil {
+		return nil, err
+	}
+	if hostname == "" {
+		return nil, errors.New("panel hostname is empty")
 	}
 
 	cmd := exec.CommandContext(ctx, "docker", "inspect", hostname, "--format", "{{json .Mounts}}")
@@ -223,28 +263,15 @@ func (r *Runner) hostProjectRoot(ctx context.Context) string {
 	cmd.Stdout = &output
 	cmd.Stderr = &output
 	if err := cmd.Run(); err != nil {
-		r.hostRoot = fallback
-		return r.hostRoot
+		return nil, fmt.Errorf("docker inspect: %w: %s", err, strings.TrimSpace(output.String()))
 	}
 
-	var mounts []struct {
-		Source      string `json:"Source"`
-		Destination string `json:"Destination"`
-	}
+	var mounts []hostMount
 	if err := json.Unmarshal(bytes.TrimSpace(output.Bytes()), &mounts); err != nil {
-		r.hostRoot = fallback
-		return r.hostRoot
-	}
-	projectRoot := filepath.ToSlash(filepath.Clean(r.ProjectRoot))
-	for _, mount := range mounts {
-		if filepath.ToSlash(filepath.Clean(mount.Destination)) == projectRoot && mount.Source != "" {
-			r.hostRoot = mount.Source
-			return r.hostRoot
-		}
+		return nil, fmt.Errorf("decode panel mounts: %w", err)
 	}
 
-	r.hostRoot = fallback
-	return r.hostRoot
+	return mounts, nil
 }
 
 func CleanServices(services []string) []string {

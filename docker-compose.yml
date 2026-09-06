@@ -26,6 +26,18 @@ services:
       - ${DOCKER_DEVELOP_HOST_PATH:-.}/docker-panel:/var/www/docker-panel
       - /var/run/docker.sock:/var/run/docker.sock
       - ${DOCKER_DEVELOP_HOST_PATH:-.}:/var/www/docker-develop
+      # Docker inspect exposes the engine-side paths, including WSL2 bind mappings.
+      - type: bind
+        source: ${HOST_PROJECT_PATH}
+        target: /var/run/docker-develop/host-paths/HOST_PROJECT_PATH
+        read_only: true
+        bind:
+          create_host_path: false
+      - ${DATA_PATH}:/var/run/docker-develop/host-paths/DATA_PATH:ro
+      - ${NGINX_HOST_LOG_PATH}:/var/run/docker-develop/host-paths/NGINX_HOST_LOG_PATH:ro
+      - ${NGINX_SITES_PATH}:/var/run/docker-develop/host-paths/NGINX_SITES_PATH:ro
+      - ${NGINX_SSL_PATH}:/var/run/docker-develop/host-paths/NGINX_SSL_PATH:ro
+      - ${MYSQL_ENTRYPOINT_INITDB}:/var/run/docker-develop/host-paths/MYSQL_ENTRYPOINT_INITDB:ro
     working_dir: /var/www/docker-panel
     command: docker-panel-go
     environment:

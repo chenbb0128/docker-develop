@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -u
+set -eu
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 ENV_FILE="$ROOT_DIR/.env"
@@ -18,19 +18,7 @@ while [ $# -gt 0 ]; do
     shift || true
 done
 
-read_env_value() {
-    local key="$1"
-    [ -f "$ENV_FILE" ] || return 0
-    awk -F= -v key="$key" '
-        /^[[:space:]]*#/ { next }
-        $1 == key {
-            value = substr($0, index($0, "=") + 1)
-            gsub(/^[[:space:]\"]+|[[:space:]\"]+$/, "", value)
-            print value
-            exit
-        }
-    ' "$ENV_FILE"
-}
+source "$ROOT_DIR/scripts/lib/environment.sh"
 
 set_env_value() {
     local key="$1"
@@ -38,8 +26,8 @@ set_env_value() {
     local tmp
     tmp="$(mktemp)"
     if [ -f "$ENV_FILE" ]; then
-        awk -v key="$key" -v value="$value" '
-            BEGIN { done = 0 }
+        ENV_VALUE="$value" awk -v key="$key" '
+            BEGIN { done = 0; value = ENVIRON["ENV_VALUE"] }
             $0 ~ "^[[:space:]]*" key "[[:space:]]*=" { print key "=" value; done = 1; next }
             { print }
             END { if (!done) { print ""; print key "=" value } }
@@ -106,24 +94,12 @@ set_env_default DATA_PATH './data' "$overwrite"
 set_env_default TIMEZONE 'Asia/Shanghai' "$overwrite"
 set_env_default CHANGE_SOURCE 'true' "$overwrite"
 set_env_default BASE_IMAGE_REGISTRY '' "$overwrite"
-set_env_default DOCKER_PANEL_PHP_IMAGE 'php:8.3-cli-alpine' "$overwrite"
-set_env_default DOCKER_PANEL_COMPOSER_IMAGE 'composer:2' "$overwrite"
-set_env_default PHP_VERSION '8.3' "$overwrite"
-set_env_default WORKSPACE_PHP_VERSION '8.3' "$overwrite"
-set_env_default NGINX_PHP_UPSTREAM_CONTAINER 'php83-fpm' "$overwrite"
-set_env_default NGINX_PHP_UPSTREAM_PORT '9000' "$overwrite"
-set_env_default WORKSPACE_COMPOSER_REPO_PACKAGIST 'https://mirrors.aliyun.com/composer/' "$overwrite"
+set_env_default GO_VERSION '1.25' "$overwrite"
 set_env_default GOPROXY 'https://goproxy.cn,direct' "$overwrite"
-set_env_default JAVA_VERSION '8' "$overwrite"
-set_env_default MAVEN_VERSION '3.9.9' "$overwrite"
-set_env_default MAVEN_MIRROR 'https://maven.aliyun.com/repository/public' "$overwrite"
-set_env_default JAVA_HOST_PORT '8080' "$overwrite"
-set_env_default JAVA_DEBUG_PORT '5005' "$overwrite"
 
 latest_host="$(read_env_value HOST_PROJECT_PATH)"
 latest_container="$(read_env_value CONTAINER_PROJECT_PATH)"
-latest_php="$(read_env_value PHP_VERSION)"
-latest_composer="$(read_env_value WORKSPACE_COMPOSER_REPO_PACKAGIST)"
+latest_go="$(read_env_value GO_VERSION)"
 
 if [ "$latest_host" = './data' ]; then ensure_dir './data'; fi
 mkdir -p "$(dirname "$INIT_FLAG")"
@@ -133,5 +109,4 @@ printf '\nLocal config is ready.\n'
 printf '  .env: %s\n' "$ENV_FILE"
 printf '  HOST_PROJECT_PATH=%s\n' "$latest_host"
 printf '  CONTAINER_PROJECT_PATH=%s\n' "$latest_container"
-printf '  PHP_VERSION=%s\n' "$latest_php"
-printf '  Composer=%s\n\n' "$latest_composer"
+printf '  GO_VERSION=%s\n\n' "$latest_go"

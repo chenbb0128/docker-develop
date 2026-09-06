@@ -11,6 +11,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 FAIL_COUNT=0
 WARN_COUNT=0
 COMPOSE_CMD=()
+source "$ROOT_DIR/scripts/lib/environment.sh"
 
 write_check() {
     local status="$1"
@@ -28,55 +29,6 @@ write_check() {
     [ -n "$suggestion" ] && printf '     建议：%s\n' "$suggestion"
 }
 
-command_exists() {
-    command -v "$1" >/dev/null 2>&1
-}
-
-read_env_value() {
-    local key="$1"
-    local file="$ROOT_DIR/.env"
-    [ -f "$file" ] || return 0
-    awk -F= -v key="$key" '
-        /^[[:space:]]*#/ { next }
-        $1 == key {
-            value = substr($0, index($0, "=") + 1)
-            gsub(/^[[:space:]\"]+|[[:space:]\"]+$/, "", value)
-            print value
-            exit
-        }
-    ' "$file"
-}
-
-resolve_local_path() {
-    local path_value="$1"
-    if [ -z "$path_value" ]; then
-        return 0
-    fi
-
-    case "$path_value" in
-        ~*) path_value="$HOME${path_value#~}" ;;
-    esac
-
-    case "$path_value" in
-        /*) printf '%s\n' "$path_value" ;;
-        *) printf '%s/%s\n' "$ROOT_DIR" "$path_value" ;;
-    esac
-}
-
-get_compose_cmd() {
-    if command_exists docker-compose; then
-        COMPOSE_CMD=(docker-compose)
-        return 0
-    fi
-
-    if command_exists docker && docker compose version >/dev/null 2>&1; then
-        COMPOSE_CMD=(docker compose)
-        return 0
-    fi
-
-    return 1
-}
-
 invoke_compose() {
     "${COMPOSE_CMD[@]}" "$@"
 }
@@ -87,7 +39,7 @@ platform_name() {
     case "$kernel" in
         Darwin) echo 'macOS' ;;
         Linux)
-            if grep -qi microsoft /proc/version 2>/dev/null; then
+            if is_wsl; then
                 echo 'WSL'
             else
                 echo 'Linux'
@@ -95,10 +47,6 @@ platform_name() {
             ;;
         *) echo "$kernel" ;;
     esac
-}
-
-is_windows_drive_path() {
-    printf '%s' "$1" | grep -Eq '^[A-Za-z]:[\\/]'
 }
 
 port_is_listening() {
@@ -157,14 +105,14 @@ else
     write_check FAIL '.env 文件' '缺少 .env。' '复制 .env.example 为 .env，或运行 bash ./start-panel.sh 自动创建。'
 fi
 
-host_project_path="$(read_env_value HOST_PROJECT_PATH)"
+if ! prepare_compose_environment; then
+    write_check FAIL 'Host paths' 'Cannot resolve host paths for this platform.'
+fi
+host_project_path="${HOST_PROJECT_PATH:-$(read_env_value HOST_PROJECT_PATH)}"
 container_project_path="$(read_env_value CONTAINER_PROJECT_PATH)"
 
 if [ -n "$host_project_path" ]; then
-    if is_windows_drive_path "$host_project_path"; then
-        write_check FAIL 'HOST_PROJECT_PATH' "$host_project_path" '在 WSL/Linux/macOS 终端中不能使用 D:\Develop 这种路径；WSL 请用 /mnt/d/Develop，macOS 请用 /Users/you/Develop。'
-    else
-        host_full_path="$(resolve_local_path "$host_project_path")"
+    if host_full_path="$(resolve_local_path "$host_project_path")"; then
         if [ -d "$host_full_path" ]; then
             write_check OK 'HOST_PROJECT_PATH' "$host_project_path -> $host_full_path"
         else
@@ -188,13 +136,6 @@ else
     write_check WARN '系统软件源' 'CHANGE_SOURCE 不是 true。' '国内网络建议设置 CHANGE_SOURCE=true。'
 fi
 
-composer_repo="$(read_env_value WORKSPACE_COMPOSER_REPO_PACKAGIST)"
-if printf '%s' "$composer_repo" | grep -Eqi 'aliyun|npmmirror|packagist'; then
-    write_check OK 'Composer 源' "${composer_repo:-已使用默认源}"
-else
-    write_check WARN 'Composer 源' '没有检测到 WORKSPACE_COMPOSER_REPO_PACKAGIST。' '国内网络建议配置为 https://mirrors.aliyun.com/composer/。'
-fi
-
 go_proxy="$(read_env_value GOPROXY)"
 if printf '%s' "$go_proxy" | grep -Eqi 'goproxy|direct'; then
     write_check OK 'Go Proxy' "$go_proxy"
@@ -213,13 +154,13 @@ if [ ${#COMPOSE_CMD[@]} -gt 0 ]; then
     services_output="$(invoke_compose config --services 2>&1)"
     if [ $? -eq 0 ]; then
         missing=''
-        for service in docker-panel nginx redis php83-fpm; do
+        for service in docker-panel go; do
             if ! printf '%s\n' "$services_output" | grep -qx "$service"; then
                 missing="$missing $service"
             fi
         done
         if [ -z "$missing" ]; then
-            write_check OK '核心服务' '已识别：docker-panel, nginx, redis, php83-fpm'
+            write_check OK '核心服务' '已识别：docker-panel, go；数据服务按需启动。'
         else
             write_check FAIL '核心服务' "缺少：$missing" '检查 docker-compose.yml 是否被误删。'
         fi

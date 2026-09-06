@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
+	pathpkg "path"
 	"regexp"
 	"strings"
 
@@ -137,17 +137,29 @@ func normalizeContainerPath(path string) string {
 		return ""
 	}
 	path = strings.ReplaceAll(path, "\\", "/")
-	if regexp.MustCompile(`^[a-zA-Z]:/`).MatchString(path) {
-		host := filepath.ToSlash(strings.TrimSpace(os.Getenv("HOST_PROJECT_PATH")))
-		container := strings.TrimSpace(os.Getenv("CONTAINER_PROJECT_PATH"))
-		if container == "" {
-			container = "/develop"
+	container := strings.TrimSpace(os.Getenv("CONTAINER_PROJECT_PATH"))
+	if container == "" {
+		container = "/develop"
+	}
+	container = pathpkg.Clean(container)
+	path = pathpkg.Clean(path)
+	// Already-container paths take precedence when host and container roots overlap.
+	if path == container || strings.HasPrefix(path, strings.TrimRight(container, "/")+"/") {
+		return path
+	}
+	rawHost := strings.Trim(strings.TrimSpace(os.Getenv("HOST_PROJECT_PATH")), "\"'")
+	host := comparableHostPath(rawHost)
+	candidate := comparableHostPath(path)
+	hostMatch, candidateMatch := host, candidate
+	if regexp.MustCompile(`^[a-zA-Z]:[\\/]`).MatchString(rawHost) || regexp.MustCompile(`^[a-zA-Z]:/`).MatchString(path) {
+		hostMatch, candidateMatch = strings.ToLower(host), strings.ToLower(candidate)
+	}
+	if host != "" && strings.HasPrefix(host, "/") {
+		if candidateMatch == hostMatch {
+			return container
 		}
-		if host != "" {
-			host = strings.TrimRight(filepath.ToSlash(host), "/")
-			if strings.HasPrefix(strings.ToLower(path), strings.ToLower(host)+"/") {
-				return joinContainerPath(container, path[len(host):])
-			}
+		if strings.HasPrefix(candidateMatch, strings.TrimRight(hostMatch, "/")+"/") {
+			return joinContainerPath(container, candidate[len(strings.TrimRight(host, "/")):])
 		}
 	}
 	if !strings.HasPrefix(path, "/") {
@@ -167,6 +179,17 @@ func normalizeContainerPath(path string) string {
 		parts = append(parts, part)
 	}
 	return "/" + strings.Join(parts, "/")
+}
+
+func comparableHostPath(value string) string {
+	if value == "" {
+		return ""
+	}
+	value = strings.ReplaceAll(value, "\\", "/")
+	if regexp.MustCompile(`^[a-zA-Z]:/`).MatchString(value) {
+		value = "/mnt/" + strings.ToLower(value[:1]) + value[2:]
+	}
+	return pathpkg.Clean(value)
 }
 
 func joinContainerPath(base, child string) string {

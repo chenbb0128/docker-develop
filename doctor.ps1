@@ -76,15 +76,15 @@ function Test-CommandExists {
 }
 
 function Get-ComposeCommand {
-    if (Test-CommandExists 'docker-compose') {
-        return @('docker-compose')
-    }
-
     if (Test-CommandExists 'docker') {
         $output = & docker compose version 2>&1
         if ($LASTEXITCODE -eq 0) {
             return @('docker', 'compose')
         }
+    }
+
+    if (Test-CommandExists 'docker-compose') {
+        return @('docker-compose')
     }
 
     return @()
@@ -167,14 +167,6 @@ if ($changeSource -eq 'true') {
     Write-Check WARN '系统软件源' 'CHANGE_SOURCE 不是 true。' '国内网络建议设置 CHANGE_SOURCE=true。'
 }
 
-$composerRepo = if ($envValues.ContainsKey('WORKSPACE_COMPOSER_REPO_PACKAGIST')) { $envValues['WORKSPACE_COMPOSER_REPO_PACKAGIST'] } else { '' }
-if ($composerRepo -match 'aliyun|npmmirror|packagist') {
-    $composerMessage = if ($composerRepo) { $composerRepo } else { '已使用默认源' }
-    Write-Check OK 'Composer 源' $composerMessage
-} else {
-    Write-Check WARN 'Composer 源' '没有检测到 WORKSPACE_COMPOSER_REPO_PACKAGIST。' '国内网络建议配置为 https://mirrors.aliyun.com/composer/。'
-}
-
 $goProxy = if ($envValues.ContainsKey('GOPROXY')) { $envValues['GOPROXY'] } else { '' }
 if ($goProxy -match 'goproxy|direct') {
     Write-Check OK 'Go Proxy' $goProxy
@@ -193,7 +185,7 @@ if ($script:ComposeCommand.Count -gt 0) {
     $servicesOutput = Invoke-Compose -Arguments @('config', '--services')
     if ($LASTEXITCODE -eq 0) {
         $services = @($servicesOutput | Where-Object { $_ -and -not $_.ToString().StartsWith('time=') })
-        $required = @('docker-panel', 'nginx', 'redis', 'php83-fpm')
+        $required = @('docker-panel', 'go')
         $missing = @($required | Where-Object { $services -notcontains $_ })
         if ($missing.Count -eq 0) {
             Write-Check OK '核心服务' ("已识别：{0}" -f ($required -join ', '))
